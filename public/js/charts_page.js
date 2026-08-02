@@ -125,7 +125,6 @@ class ChartsPageController {
         } catch (err) {
             console.warn("Cloud D1 sync fallback to local storage:", err);
         }
-        this.ensureHistoricalLogs();
         this.updateLastUpdatedTimestamp();
         this.populateTrendItemDropdown();
         this.renderKpis();
@@ -133,6 +132,34 @@ class ChartsPageController {
         this.renderLogsTable();
         this.renderCategoryPills();
         this.renderStockTable();
+
+        // 🟢 REAL-TIME SYNC 1: Listen for local storage changes across browser tabs instantly
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'pea_warehouse_items_v4' || e.key === 'pea_warehouse_logs_v4') {
+                console.log("⚡ Real-time local storage sync triggered across tabs!");
+                this.refreshAllCharts();
+            }
+        });
+
+        // 🟢 REAL-TIME SYNC 2: Polling Cloudflare D1 every 8 seconds for multi-device sync
+        setInterval(() => {
+            if (typeof this.db.syncFromCloudflare === "function") {
+                this.db.syncFromCloudflare().then(updated => {
+                    if (updated) {
+                        this.refreshAllCharts();
+                    }
+                });
+            }
+        }, 8000);
+
+        // 🟢 REAL-TIME SYNC 3: Sync when tab gains focus
+        window.addEventListener('focus', () => {
+            if (typeof this.db.syncFromCloudflare === "function") {
+                this.db.syncFromCloudflare().then(() => {
+                    this.refreshAllCharts();
+                });
+            }
+        });
     }
 
     async refreshAllCharts() {
@@ -141,7 +168,6 @@ class ChartsPageController {
                 await this.db.syncFromCloudflare();
             }
         } catch (err) {}
-        this.ensureHistoricalLogs();
         this.updateLastUpdatedTimestamp();
         this.populateTrendItemDropdown();
         this.renderKpis();

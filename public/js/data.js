@@ -329,6 +329,7 @@ class StockDatabase {
     async syncFromCloudflare() {
         try {
             const baseUrl = this.getApiBaseUrl();
+            let hasChanges = false;
 
             // 1. Sync Inventory Items Stock
             const res = await fetch(`${baseUrl}/api/inventory`);
@@ -364,10 +365,16 @@ class StockDatabase {
 
                     if (updated) {
                         localStorage.setItem(this.STORAGE_KEY_ITEMS, JSON.stringify(localItems));
+                        hasChanges = true;
                         console.log("☁️ Successfully updated local stock from Cloudflare D1!");
                         if (window.app && typeof window.app.renderStockTable === 'function') {
                             window.app.renderStockTable(); 
                             window.app.renderDashboard();
+                        }
+                        if (window.chartsPage && typeof window.chartsPage.renderAllCharts === 'function') {
+                            window.chartsPage.renderKpis();
+                            window.chartsPage.renderAllCharts();
+                            window.chartsPage.renderStockTable();
                         }
                     }
                 }
@@ -401,12 +408,19 @@ class StockDatabase {
                     const mergedArray = Array.from(mergedLogsMap.values());
                     mergedArray.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-                    this.saveLogs(mergedArray);
-                    console.log("☁️ Successfully synced transaction logs from Cloudflare D1!");
+                    if (mergedArray.length !== existingLogs.length) {
+                        this.saveLogs(mergedArray);
+                        hasChanges = true;
+                        console.log("☁️ Successfully synced transaction logs from Cloudflare D1!");
+                        if (window.chartsPage && typeof window.chartsPage.renderLogsTable === 'function') {
+                            window.chartsPage.renderLogsTable();
+                            window.chartsPage.renderMonthlyTrendChart();
+                        }
+                    }
                 }
             }
 
-            return true;
+            return hasChanges;
         } catch (e) { console.warn("Cloudflare sync notice:", e.message); }
         return false;
     }
