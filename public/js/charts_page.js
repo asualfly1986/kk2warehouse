@@ -331,6 +331,7 @@ class ChartsPageController {
         // Filter by log type
         if (this.logsTypeFilter !== 'all') {
             logs = logs.filter(l => {
+                if (this.logsTypeFilter === 'import') return l.type === 'import';
                 if (this.logsTypeFilter === 'out') return l.type === 'out' || l.type === 'withdraw' || l.type === 'dispense';
                 if (this.logsTypeFilter === 'in') return l.type === 'in' || l.type === 'receive' || l.type === 'set';
                 if (this.logsTypeFilter === 'audit') return l.type === 'audit' || l.type === 'count';
@@ -354,7 +355,7 @@ class ChartsPageController {
             if (selectedItem) {
                 titleEl.textContent = `📜 ประวัติเคลื่อนไหวพัสดุเฉพาะรายการ: [${selectedItem.code}] ${selectedItem.name}`;
             } else {
-                titleEl.textContent = `📜 ประวัติการเบิกจ่าย รับเข้า และตรวจนับพัสดุย้อนหลัง ทุกรายการ (${logs.length} รายการ)`;
+                titleEl.textContent = `📜 ประวัติการเบิกจ่าย รับเข้า นำเข้า และตรวจนับพัสดุย้อนหลัง ทุกรายการ (${logs.length} รายการ)`;
             }
         }
 
@@ -385,7 +386,11 @@ class ChartsPageController {
             let qtyColor = "#38bdf8";
             let signPrefix = "";
 
-            if (l.type === 'out' || l.type === 'withdraw' || l.type === 'dispense') {
+            if (l.type === 'import') {
+                typeBadge = `<span class="badge badge-primary" style="background: #3b82f6; color: #ffffff;">📥 นำเข้าพัสดุ</span>`;
+                qtyColor = "#60a5fa";
+                signPrefix = "+";
+            } else if (l.type === 'out' || l.type === 'withdraw' || l.type === 'dispense') {
                 typeBadge = `<span class="badge badge-danger">🔴 เบิกจ่ายออก</span>`;
                 qtyColor = "#ef4444";
                 signPrefix = "-";

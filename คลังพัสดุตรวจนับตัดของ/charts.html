@@ -212,8 +212,9 @@
                         <input type="text" id="inputLogsSearch" class="search-input" style="width: 190px; padding: 6px 12px; font-size: 12px;" placeholder="🔍 ค้นหาประวัติ..." oninput="chartsPage.handleLogsSearchInput(this.value)">
                         <select id="selectLogsType" class="search-input" style="width: auto; padding: 6px 12px; font-size: 12px; font-weight: 600;" onchange="chartsPage.setLogsTypeFilter(this.value)">
                             <option value="all">⚡ ทุกประเภทรายการ</option>
-                            <option value="out">🔴 เบิกจ่ายออก (Dispense)</option>
+                            <option value="import">📥 นำเข้าพัสดุ (Import Batch)</option>
                             <option value="in">🟢 รับเข้าเติมสต็อก (Receive)</option>
+                            <option value="out">🔴 เบิกจ่ายออก (Dispense)</option>
                             <option value="audit">🔵 ตรวจนับสต็อก (Audit)</option>
                         </select>
                         <button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; font-weight: 600;" onclick="chartsPage.exportLogsExcelReport()" title="ส่งออกประวัติการเคลื่อนไหวเป็นไฟล์ Excel">

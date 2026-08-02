@@ -213,18 +213,45 @@ class StockDatabase {
         const items = this.getItems();
         const itemIndex = items.findIndex(i => i.code === code);
         if (itemIndex === -1) throw new Error("ไม่พบพัสดุนี้ในระบบ");
-        items[itemIndex].mb52Qty = Number(mb52Qty) || 0; 
-        items[itemIndex].wmsQty = Number(wmsQty) || 0; 
-        items[itemIndex].kk23Qty = Number(kk23Qty) || 0;
-        items[itemIndex].lastUpdated = new Date().toISOString(); 
+        const item = items[itemIndex];
+        const oldMb = item.mb52Qty || 0;
+        const oldWm = item.wmsQty || 0;
+        const oldKk = item.kk23Qty || 0;
+        
+        item.mb52Qty = Number(mb52Qty) || 0; 
+        item.wmsQty = Number(wmsQty) || 0; 
+        item.kk23Qty = Number(kk23Qty) || 0;
+        item.lastUpdated = new Date().toISOString(); 
         this.saveItems(items); 
         this.pushToCloudflare();
+
+        // Log import transaction
+        const logs = this.getLogs();
+        logs.unshift({
+            id: "LOG-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+            timestamp: new Date().toISOString(),
+            type: "import",
+            code: item.code,
+            name: item.name,
+            qty: (Number(mb52Qty) || 0) + (Number(wmsQty) || 0) + (Number(kk23Qty) || 0),
+            unit: item.unit || "ชิ้น",
+            balanceBefore: oldMb + oldWm + oldKk,
+            balanceAfter: (Number(mb52Qty) || 0) + (Number(wmsQty) || 0) + (Number(kk23Qty) || 0),
+            requester: "Admin (อัปเดตคลัง)",
+            workOrder: "IMPORT-LOCATIONS",
+            note: `อัปเดตยอดคลัง (MB52: ${mb52Qty}, WMS: ${wmsQty}, sloc 0023: ${kk23Qty})`
+        });
+        this.saveLogs(logs);
+
         return items[itemIndex];
     }
 
     importLocationQuantitiesBatch(batchData) {
         const items = this.getItems();
+        const logs = this.getLogs();
         let updatedCount = 0;
+        const nowIso = new Date().toISOString();
+
         batchData.forEach(row => {
             let item = null;
             if (row.code) item = items.find(i => i.code.trim() === String(row.code).trim());
@@ -236,14 +263,32 @@ class StockDatabase {
                 }
             }
             if (item) {
+                const oldQty = item.currentQty || 0;
                 if (row.currentQty !== undefined) item.currentQty = Number(row.currentQty) || 0;
                 if (row.mb52Qty !== undefined) item.mb52Qty = Number(row.mb52Qty) || 0;
                 if (row.wmsQty !== undefined) item.wmsQty = Number(row.wmsQty) || 0;
                 if (row.kk23Qty !== undefined) item.kk23Qty = Number(row.kk23Qty) || 0;
-                item.lastUpdated = new Date().toISOString(); updatedCount++;
+                item.lastUpdated = nowIso;
+                updatedCount++;
+
+                logs.unshift({
+                    id: "LOG-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+                    timestamp: nowIso,
+                    type: "import",
+                    code: item.code,
+                    name: item.name,
+                    qty: item.currentQty,
+                    unit: item.unit || "ชิ้น",
+                    balanceBefore: oldQty,
+                    balanceAfter: item.currentQty,
+                    requester: "Admin (นำเข้าไฟล์)",
+                    workOrder: "IMPORT-BATCH-EXCEL",
+                    note: `นำเข้าพัสดุแบบไฟล์ (คงเหลือ 2601: ${item.currentQty})`
+                });
             }
         });
         this.saveItems(items); 
+        this.saveLogs(logs);
         this.pushToCloudflare();
         return updatedCount;
     }
