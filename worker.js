@@ -84,7 +84,17 @@ export default {
                             LIMIT 300
                         `).all();
                         if (results && results.length > 0) allLogs = results;
-                    } catch (err) {}
+                    } catch (err1) {
+                        try {
+                            const { results } = await db.prepare(`
+                                SELECT id, timestamp, type, item_code AS itemCode, item_name AS itemName, qty, current_stock AS currentStock, requester, work_order AS workOrder, note
+                                FROM logs
+                                ORDER BY timestamp DESC
+                                LIMIT 300
+                            `).all();
+                            if (results && results.length > 0) allLogs = results;
+                        } catch(err2) {}
+                    }
                 }
                 
                 if (allLogs.length === 0 && env && env.WAREHOUSE_KV) {
@@ -141,6 +151,9 @@ export default {
                                 )
                             `).run();
 
+                            try { await db.prepare(`ALTER TABLE logs ADD COLUMN unit TEXT`).run(); } catch(e) {}
+                            try { await db.prepare(`ALTER TABLE logs ADD COLUMN balance_before REAL`).run(); } catch(e) {}
+
                             await db.prepare(`
                                 INSERT INTO logs (timestamp, type, item_code, item_name, qty, unit, balance_before, current_stock, requester, work_order, note)
                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -158,7 +171,24 @@ export default {
                                 log.note || ''
                             ).run();
                         } catch(lErr) {
-                            console.error("D1 Log Insert Error:", lErr);
+                            try {
+                                await db.prepare(`
+                                    INSERT INTO logs (timestamp, type, item_code, item_name, qty, current_stock, requester, work_order, note)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                `).bind(
+                                    log.timestamp || new Date().toISOString(),
+                                    log.type || 'update',
+                                    log.itemCode || code,
+                                    log.itemName || '',
+                                    log.qty || 0,
+                                    log.currentStock || currentQty || 0,
+                                    log.requester || '',
+                                    log.workOrder || '',
+                                    log.note || ''
+                                ).run();
+                            } catch(lErr2) {
+                                console.error("D1 Log Insert Error:", lErr2);
+                            }
                         }
                     }
                 }
@@ -252,6 +282,9 @@ export default {
                             )
                         `).run();
 
+                        try { await db.prepare(`ALTER TABLE logs ADD COLUMN unit TEXT`).run(); } catch(e) {}
+                        try { await db.prepare(`ALTER TABLE logs ADD COLUMN balance_before REAL`).run(); } catch(e) {}
+
                         const logStmt = db.prepare(`
                             INSERT INTO logs (timestamp, type, item_code, item_name, qty, unit, balance_before, current_stock, requester, work_order, note)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -270,7 +303,26 @@ export default {
                             l.note || '-'
                         ));
                         await db.batch(logBatch);
-                    } catch(lBatchErr) {}
+                    } catch(lBatchErr) {
+                        try {
+                            const logStmt = db.prepare(`
+                                INSERT INTO logs (timestamp, type, item_code, item_name, qty, current_stock, requester, work_order, note)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            `);
+                            const logBatch = logsToSync.slice(0, 100).map(l => logStmt.bind(
+                                l.timestamp || new Date().toISOString(),
+                                l.type || 'out',
+                                l.code || l.itemCode || '',
+                                l.name || l.itemName || '',
+                                Math.abs(Number(l.qty || 0)),
+                                Number(l.balanceAfter || l.currentStock || 0),
+                                l.requester || '-',
+                                l.workOrder || '-',
+                                l.note || '-'
+                            ));
+                            await db.batch(logBatch);
+                        } catch(e) {}
+                    }
                 }
 
                 if (env && env.WAREHOUSE_KV) {
