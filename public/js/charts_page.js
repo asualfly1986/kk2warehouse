@@ -10,6 +10,7 @@ class ChartsPageController {
         this.searchQuery = "";
         this.selectedCategory = "all";
         this.deficitViewMode = "top15"; // Default to Top 15 for clean presentation view
+        this.kpiCardFilter = "all"; // Interactive KPI Card Filter State
 
         // Chart instances
         this.doughnutChart = null;
@@ -22,6 +23,92 @@ class ChartsPageController {
         } else {
             this.init();
         }
+    }
+
+    handleKpiCardClick(filterKey) {
+        if (this.kpiCardFilter === filterKey && filterKey !== 'all') {
+            this.kpiCardFilter = 'all';
+        } else {
+            this.kpiCardFilter = filterKey;
+        }
+
+        // Highlight active KPI card with active glow styles
+        const cardTotal = document.getElementById("kpiCardTotal");
+        const cardOut = document.getElementById("kpiCardOut");
+        const cardLow = document.getElementById("kpiCardLow");
+        const cardGood = document.getElementById("kpiCardGood");
+
+        const cards = [cardTotal, cardOut, cardLow, cardGood];
+        cards.forEach(c => {
+            if (c) {
+                c.classList.remove("active-kpi-card", "active-kpi-card-red", "active-kpi-card-orange", "active-kpi-card-green");
+            }
+        });
+
+        if (this.kpiCardFilter === 'out_of_stock' && cardOut) {
+            cardOut.classList.add("active-kpi-card-red");
+        } else if (this.kpiCardFilter === 'low' && cardLow) {
+            cardLow.classList.add("active-kpi-card-orange");
+        } else if (this.kpiCardFilter === 'good_group' && cardGood) {
+            cardGood.classList.add("active-kpi-card-green");
+        } else if (cardTotal) {
+            cardTotal.classList.add("active-kpi-card");
+        }
+
+        // Filter all items by KPI selection
+        const allItems = this.db.getItems();
+        let targetItems = allItems;
+
+        if (this.kpiCardFilter === 'out_of_stock') {
+            targetItems = allItems.filter(i => {
+                const s = window.getItemStatus(i.currentQty, i.standard);
+                return s.key === 'out_of_stock';
+            });
+        } else if (this.kpiCardFilter === 'low') {
+            targetItems = allItems.filter(i => {
+                const s = window.getItemStatus(i.currentQty, i.standard);
+                return s.key === 'low';
+            });
+        } else if (this.kpiCardFilter === 'good_group') {
+            targetItems = allItems.filter(i => {
+                const s = window.getItemStatus(i.currentQty, i.standard);
+                return ['good', 'full', 'normal', 'over'].includes(s.key);
+            });
+        }
+
+        // Update Location Chart filter pill
+        const filterPillEl = document.getElementById("filterPillChartLocations");
+        const subtitleEl = document.getElementById("subtitleChartLocations");
+
+        const kpiLabels = {
+            all: "📦 พัสดุทั้งหมด",
+            out_of_stock: "🚨 ขาดสต็อกจัดซื้อด่วน (<50%)",
+            low: "⚠️ เตือนสต็อกต่ำ (50-60%)",
+            good_group: "🟢 สต็อกอยู่ในเกณฑ์ดี (>=60%)"
+        };
+
+        if (this.kpiCardFilter !== 'all') {
+            if (filterPillEl) {
+                filterPillEl.innerHTML = `
+                    <div style="background: rgba(59, 130, 246, 0.25); border: 1px solid #3b82f6; color: #60a5fa; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px; cursor: pointer;" onclick="chartsPage.handleKpiCardClick('all')" title="คลิกเพื่อล้างตัวกรอง">
+                        <span>✨ กรองจากปุ่ม KPI: ${kpiLabels[this.kpiCardFilter]} (${targetItems.length} รายการ)</span>
+                        <span style="background: #ef4444; color: #ffffff; width: 16px; height: 16px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold;">✕</span>
+                    </div>
+                `;
+            }
+            if (subtitleEl) {
+                subtitleEl.textContent = `ยอดรวมใน 4 คลังเฉพาะกลุ่ม [${kpiLabels[this.kpiCardFilter]}] (${targetItems.length} รายการ)`;
+            }
+        } else {
+            if (filterPillEl) filterPillEl.innerHTML = "";
+            if (subtitleEl) subtitleEl.textContent = "เปรียบเทียบยอดรวมทั้งหมดใน 2601, MB52, WMS และ sloc 0023";
+        }
+
+        // Re-render all charts and data table with targetItems!
+        this.renderLocationsChart(targetItems);
+        this.renderMainBarChart(targetItems);
+        this.renderTopDeficitChart(targetItems);
+        this.renderStockTable(targetItems);
     }
 
     async init() {

@@ -328,6 +328,43 @@ body {
     box-shadow: var(--shadow-glow);
 }
 
+.stat-card.interactive-kpi {
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    user-select: none;
+}
+
+.stat-card.interactive-kpi:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+    border-color: var(--accent-primary);
+}
+
+.stat-card.active-kpi-card {
+    border: 2px solid var(--accent-primary) !important;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(59, 130, 246, 0.25)) !important;
+    box-shadow: 0 0 16px rgba(59, 130, 246, 0.5) !important;
+}
+
+.stat-card.active-kpi-card-red {
+    border: 2px solid #ef4444 !important;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(239, 68, 68, 0.25)) !important;
+    box-shadow: 0 0 16px rgba(239, 68, 68, 0.5) !important;
+}
+
+.stat-card.active-kpi-card-orange {
+    border: 2px solid #f97316 !important;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(249, 115, 22, 0.25)) !important;
+    box-shadow: 0 0 16px rgba(249, 115, 22, 0.5) !important;
+}
+
+.stat-card.active-kpi-card-green {
+    border: 2px solid #10b981 !important;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(16, 185, 129, 0.25)) !important;
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.5) !important;
+}
+
 .stat-card.active-filter::after {
     content: "✓ เลือก";
     position: absolute;

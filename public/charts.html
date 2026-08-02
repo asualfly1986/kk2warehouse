@@ -87,30 +87,30 @@
             </div>
         </header>
 
-        <!-- KPI Summary Cards Bar -->
+        <!-- KPI Summary Cards Bar (Interactive Filter Buttons) -->
         <div class="stats-grid" id="analyticsKpiGrid" style="margin-bottom: 20px;">
-            <div class="stat-card">
+            <div class="stat-card interactive-kpi" id="kpiCardTotal" onclick="chartsPage.handleKpiCardClick('all')" title="💡 คลิกเพื่อแสดงรายการพัสดุทั้งหมด">
                 <div class="stat-icon icon-blue">📦</div>
                 <div class="stat-info">
                     <div class="stat-title">พัสดุทั้งหมด (SKU)</div>
                     <div class="stat-value" id="kpiTotalItems">0</div>
                 </div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card interactive-kpi" id="kpiCardOut" onclick="chartsPage.handleKpiCardClick('out_of_stock')" title="💡 คลิกเพื่อกรองเฉพาะรายการที่ขาดสต็อกด่วนที่สุด (<50%)">
                 <div class="stat-icon icon-red">🚨</div>
                 <div class="stat-info">
                     <div class="stat-title">ต้องจัดหาด่วน (<50%)</div>
                     <div class="stat-value" id="kpiOutOfStock">0</div>
                 </div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card interactive-kpi" id="kpiCardLow" onclick="chartsPage.handleKpiCardClick('low')" title="💡 คลิกเพื่อกรองเฉพาะรายการที่เตือนสต็อกต่ำ (50-60%)">
                 <div class="stat-icon icon-orange">⚠️</div>
                 <div class="stat-info">
                     <div class="stat-title">เตือนสต็อกต่ำ (50-60%)</div>
                     <div class="stat-value" id="kpiLowStock">0</div>
                 </div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card interactive-kpi" id="kpiCardGood" onclick="chartsPage.handleKpiCardClick('good_group')" title="💡 คลิกเพื่อกรองเฉพาะรายการที่สต็อกอยู่ในเกณฑ์ดี (>=60%)">
                 <div class="stat-icon icon-green">🟢</div>
                 <div class="stat-info">
                     <div class="stat-title">สต็อกอยู่ในเกณฑ์ดี</div>
