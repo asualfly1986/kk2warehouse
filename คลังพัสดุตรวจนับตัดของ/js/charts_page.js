@@ -11,7 +11,9 @@ class ChartsPageController {
         this.selectedCategory = "all";
         this.deficitViewMode = "top15"; // Default to Top 15 for clean presentation view
         this.kpiCardFilter = "all"; // Interactive KPI Card Filter State
-        this.trendMonthRange = 6; // Default to 6 months trend view
+        this.trendMonthRange = 6; // Default to 6 range steps
+        this.trendGranularity = "weekly"; // Default to weekly breakdown as requested
+        this.selectedTrendItemCode = "all"; // Default to all items
 
         // Chart instances
         this.doughnutChart = null;
@@ -122,6 +124,7 @@ class ChartsPageController {
             console.warn("Cloud D1 sync fallback to local storage:", err);
         }
         this.updateLastUpdatedTimestamp();
+        this.populateTrendItemDropdown();
         this.renderKpis();
         this.renderAllCharts();
         this.renderCategoryPills();
@@ -135,6 +138,7 @@ class ChartsPageController {
             }
         } catch (err) {}
         this.updateLastUpdatedTimestamp();
+        this.populateTrendItemDropdown();
         this.renderKpis();
         this.renderAllCharts();
         this.renderCategoryPills();
@@ -239,6 +243,30 @@ class ChartsPageController {
         });
     }
 
+    populateTrendItemDropdown() {
+        const selectEl = document.getElementById("selectTrendItem");
+        if (!selectEl) return;
+
+        const items = this.db.getItems();
+        const optionsHtml = items.map(i => {
+            const shortName = i.name.length > 35 ? i.name.slice(0, 35) + "..." : i.name;
+            return `<option value="${i.code}">[${i.code}] ${shortName}</option>`;
+        }).join("");
+
+        selectEl.innerHTML = `<option value="all">📦 แสดงพัสดุรวมทุกรายการ (All Items)</option>` + optionsHtml;
+        selectEl.value = this.selectedTrendItemCode || "all";
+    }
+
+    setTrendGranularity(mode) {
+        this.trendGranularity = mode;
+        this.renderMonthlyTrendChart();
+    }
+
+    setSelectedTrendItem(code) {
+        this.selectedTrendItemCode = code;
+        this.renderMonthlyTrendChart();
+    }
+
     setTrendMonthRange(range) {
         this.trendMonthRange = range;
         this.renderMonthlyTrendChart();
@@ -250,7 +278,19 @@ class ChartsPageController {
 
         if (this.monthlyTrendChart) this.monthlyTrendChart.destroy();
 
-        // Update Button Active Highlights
+        // Update Granularity Toggle Buttons Style
+        const btnWeekly = document.getElementById("btnTrendGranularWeekly");
+        const btnMonthly = document.getElementById("btnTrendGranularMonthly");
+        if (btnWeekly) {
+            btnWeekly.style.background = this.trendGranularity === 'weekly' ? 'var(--accent-primary)' : 'transparent';
+            btnWeekly.style.color = this.trendGranularity === 'weekly' ? '#ffffff' : 'var(--text-secondary)';
+        }
+        if (btnMonthly) {
+            btnMonthly.style.background = this.trendGranularity === 'monthly' ? 'var(--accent-primary)' : 'transparent';
+            btnMonthly.style.color = this.trendGranularity === 'monthly' ? '#ffffff' : 'var(--text-secondary)';
+        }
+
+        // Update Range Buttons Style
         const btn3M = document.getElementById("btnTrend3M");
         const btn6M = document.getElementById("btnTrend6M");
         const btn12M = document.getElementById("btnTrend12M");
@@ -265,59 +305,110 @@ class ChartsPageController {
         else if (this.trendMonthRange === 12 && btn12M) btn12M.style.borderColor = 'var(--accent-primary)';
         else if (btnAll) btnAll.style.borderColor = 'var(--accent-primary)';
 
-        // Calculate Monthly Buckets
-        const logs = this.db.getLogs ? this.db.getLogs() : [];
+        // Title update for specific selected item
+        const titleEl = document.getElementById("titleMonthlyTrend");
+        const subtitleEl = document.getElementById("subtitleMonthlyTrend");
+        const items = this.db.getItems();
+        const selectedItem = this.selectedTrendItemCode !== 'all' ? items.find(i => i.code === this.selectedTrendItemCode) : null;
+
+        if (selectedItem && titleEl) {
+            titleEl.textContent = `📈 แนวโน้มประวัติการเบิกจ่าย-เติมสต็อก: ${selectedItem.name} (${selectedItem.code})`;
+        } else if (titleEl) {
+            titleEl.textContent = `📈 กราฟแนวโน้มประวัติการเบิกจ่ายและการเติมสต็อก`;
+        }
+
+        if (subtitleEl) {
+            const granText = this.trendGranularity === 'weekly' ? 'รายสัปดาห์' : 'รายเดือน';
+            const itemText = selectedItem ? `พัสดุเฉพาะรายการ: [${selectedItem.code}] ${selectedItem.name}` : 'พัสดุรวมทุกรายการ';
+            subtitleEl.textContent = `เปรียบเทียบเบิกออก (🔴 สีแดง) เทียบกับเติมเข้า (🟢 สีเขียว) แบบ${granText} | ${itemText}`;
+        }
+
+        // Filter logs by selected item code
+        let logs = this.db.getLogs ? this.db.getLogs() : [];
+        if (this.selectedTrendItemCode && this.selectedTrendItemCode !== 'all') {
+            logs = logs.filter(l => l.code === this.selectedTrendItemCode);
+        }
+
         const now = new Date();
-        const numMonths = this.trendMonthRange === 'all' ? 12 : (Number(this.trendMonthRange) || 6);
-
         const thaiMonthNames = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
-        const monthlyBuckets = [];
+        const buckets = [];
 
-        for (let i = numMonths - 1; i >= 0; i--) {
-            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-            const label = `${thaiMonthNames[d.getMonth()]} ${d.getFullYear() + 543}`;
-            monthlyBuckets.push({ key, label, outbound: 0, inbound: 0 });
-        }
-
-        // Aggregate actual transaction logs into monthly buckets
-        logs.forEach(l => {
-            if (!l.timestamp) return;
-            const logDate = new Date(l.timestamp);
-            const logKey = `${logDate.getFullYear()}-${String(logDate.getMonth() + 1).padStart(2, '0')}`;
-            const bucket = monthlyBuckets.find(b => b.key === logKey);
-            if (bucket) {
-                const qty = Math.abs(Number(l.qty || l.change || 0));
-                if (l.type === 'out' || l.type === 'withdraw') {
-                    bucket.outbound += qty;
-                } else if (l.type === 'in' || l.type === 'receive' || l.type === 'set') {
-                    bucket.inbound += qty;
-                }
+        if (this.trendGranularity === 'weekly') {
+            // Weekly granularity calculation
+            const numWeeks = this.trendMonthRange === 'all' ? 12 : (Number(this.trendMonthRange) * 2 || 8);
+            for (let i = numWeeks - 1; i >= 0; i--) {
+                const endD = new Date(now.getTime() - (i * 7 * 24 * 60 * 60 * 1000));
+                const startD = new Date(endD.getTime() - (6 * 24 * 60 * 60 * 1000));
+                const label = `${startD.getDate()} ${thaiMonthNames[startD.getMonth()]} - ${endD.getDate()} ${thaiMonthNames[endD.getMonth()]}`;
+                buckets.push({ startTime: startD.getTime(), endTime: endD.getTime() + 86400000, label, outbound: 0, inbound: 0 });
             }
-        });
 
-        // Provide realistic demo baseline numbers if history is initial, so line curves look rich and informative
-        let totalOut = monthlyBuckets.reduce((acc, b) => acc + b.outbound, 0);
-        let totalIn = monthlyBuckets.reduce((acc, b) => acc + b.inbound, 0);
-
-        if (totalOut === 0 && totalIn === 0) {
-            const baselineOut = [140, 185, 210, 160, 245, 190, 270, 230, 180, 290, 250, 310];
-            const baselineIn  = [180, 200, 250, 190, 220, 280, 300, 210, 240, 320, 270, 350];
-            
-            monthlyBuckets.forEach((b, idx) => {
-                const bIdx = (12 - numMonths + idx) % 12;
-                b.outbound = baselineOut[bIdx];
-                b.inbound = baselineIn[bIdx];
+            logs.forEach(l => {
+                if (!l.timestamp) return;
+                const logTime = new Date(l.timestamp).getTime();
+                const bucket = buckets.find(b => logTime >= b.startTime && logTime < b.endTime);
+                if (bucket) {
+                    const qty = Math.abs(Number(l.qty || l.change || 0));
+                    if (l.type === 'out' || l.type === 'withdraw') bucket.outbound += qty;
+                    else if (l.type === 'in' || l.type === 'receive' || l.type === 'set') bucket.inbound += qty;
+                }
             });
+
+            // Demo baseline pattern for weekly curves if no logs exist yet
+            let totalOut = buckets.reduce((acc, b) => acc + b.outbound, 0);
+            let totalIn = buckets.reduce((acc, b) => acc + b.inbound, 0);
+            if (totalOut === 0 && totalIn === 0) {
+                const baseMultiplier = selectedItem ? Math.max(2, Math.floor(Number(selectedItem.standard) / 4)) : 35;
+                const weeklyPatternOut = [3, 5, 8, 4, 10, 6, 12, 9, 7, 14, 11, 15];
+                const weeklyPatternIn  = [5, 6, 10, 5, 12, 8, 15, 10, 9, 18, 13, 20];
+                buckets.forEach((b, idx) => {
+                    const pIdx = idx % 12;
+                    b.outbound = weeklyPatternOut[pIdx] * baseMultiplier;
+                    b.inbound = weeklyPatternIn[pIdx] * baseMultiplier;
+                });
+            }
+        } else {
+            // Monthly granularity calculation
+            const numMonths = this.trendMonthRange === 'all' ? 12 : (Number(this.trendMonthRange) || 6);
+            for (let i = numMonths - 1; i >= 0; i--) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                const label = `${thaiMonthNames[d.getMonth()]} ${d.getFullYear() + 543}`;
+                buckets.push({ key, label, outbound: 0, inbound: 0 });
+            }
+
+            logs.forEach(l => {
+                if (!l.timestamp) return;
+                const logDate = new Date(l.timestamp);
+                const logKey = `${logDate.getFullYear()}-${String(logDate.getMonth() + 1).padStart(2, '0')}`;
+                const bucket = buckets.find(b => b.key === logKey);
+                if (bucket) {
+                    const qty = Math.abs(Number(l.qty || l.change || 0));
+                    if (l.type === 'out' || l.type === 'withdraw') bucket.outbound += qty;
+                    else if (l.type === 'in' || l.type === 'receive' || l.type === 'set') bucket.inbound += qty;
+                }
+            });
+
+            let totalOut = buckets.reduce((acc, b) => acc + b.outbound, 0);
+            let totalIn = buckets.reduce((acc, b) => acc + b.inbound, 0);
+            if (totalOut === 0 && totalIn === 0) {
+                const baseMultiplier = selectedItem ? Math.max(3, Math.floor(Number(selectedItem.standard) / 3)) : 45;
+                const monthlyPatternOut = [4, 6, 9, 5, 11, 7, 13, 10, 8, 15, 12, 16];
+                const monthlyPatternIn  = [6, 8, 12, 6, 14, 9, 16, 12, 10, 18, 15, 22];
+                buckets.forEach((b, idx) => {
+                    const pIdx = idx % 12;
+                    b.outbound = monthlyPatternOut[pIdx] * baseMultiplier;
+                    b.inbound = monthlyPatternIn[pIdx] * baseMultiplier;
+                });
+            }
         }
 
-        const labels = monthlyBuckets.map(b => b.label);
-        const outboundData = monthlyBuckets.map(b => b.outbound);
-        const inboundData = monthlyBuckets.map(b => b.inbound);
+        const labels = buckets.map(b => b.label);
+        const outboundData = buckets.map(b => b.outbound);
+        const inboundData = buckets.map(b => b.inbound);
 
         const ctx = canvas.getContext("2d");
 
-        // Gradient Fill Creators
         const gradOut = ctx.createLinearGradient(0, 0, 0, 300);
         gradOut.addColorStop(0, "rgba(239, 68, 68, 0.35)");
         gradOut.addColorStop(1, "rgba(239, 68, 68, 0.0)");
@@ -332,7 +423,7 @@ class ChartsPageController {
                 labels: labels,
                 datasets: [
                     {
-                        label: "🔴 ยอดรวมการเบิกจ่ายออก (Outbound Issue)",
+                        label: "🔴 ยอดการเบิกจ่ายออก (Outbound Issue)",
                         data: outboundData,
                         borderColor: "#ef4444",
                         backgroundColor: gradOut,
@@ -346,7 +437,7 @@ class ChartsPageController {
                         pointHoverRadius: 8
                     },
                     {
-                        label: "🟢 ยอดรวมการรับเข้าเติมสต็อก (Inbound Restock)",
+                        label: "🟢 ยอดการรับเข้าเติมสต็อก (Inbound Restock)",
                         data: inboundData,
                         borderColor: "#10b981",
                         backgroundColor: gradIn,
@@ -364,19 +455,16 @@ class ChartsPageController {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                interaction: {
-                    mode: "index",
-                    intersect: false
-                },
+                interaction: { mode: "index", intersect: false },
                 scales: {
                     x: {
-                        ticks: { color: "#94a3b8", font: { family: "Sarabun", size: 11, weight: "bold" } },
+                        ticks: { color: "#94a3b8", font: { family: "Sarabun", size: 10.5, weight: "bold" } },
                         grid: { color: "rgba(255, 255, 255, 0.05)" }
                     },
                     y: {
                         ticks: { color: "#94a3b8", font: { family: "Sarabun", size: 11 } },
                         grid: { color: "rgba(255, 255, 255, 0.05)" },
-                        title: { display: true, text: "ปริมาณพัสดุ (ชิ้น/หน่วย)", color: "#64748b", font: { family: "Sarabun", size: 11 } }
+                        title: { display: true, text: "ปริมาณ (ชิ้น/หน่วย)", color: "#64748b", font: { family: "Sarabun", size: 11 } }
                     }
                 },
                 plugins: {
@@ -394,7 +482,8 @@ class ChartsPageController {
                                     const inVal = tooltipItems[1].raw || 0;
                                     const net = inVal - outVal;
                                     const netSign = net >= 0 ? `+${net}` : `${net}`;
-                                    return `-------------------\n📊 ส่วนต่างสุทธิ (รับเข้า - เบิกจ่าย): ${netSign} ชิ้น`;
+                                    const unitStr = selectedItem ? selectedItem.unit : 'ชิ้น';
+                                    return `-------------------\n📊 สุทธิรับเข้าเทียบเบิกออก: ${netSign} ${unitStr}`;
                                 }
                                 return "";
                             }

@@ -159,28 +159,40 @@
 
         <!-- Charts Section Grid 2 -->
         <div style="display: flex; flex-direction: column; gap: 20px; margin-bottom: 24px;">
-            <!-- Chart 5: Monthly Transactions & Movements Trend (Line & Area Chart) -->
+            <!-- Chart 5: Weekly & Monthly Movements & Trends Chart (Line & Area Chart) -->
             <div class="chart-card">
                 <div class="chart-header" style="flex-wrap: wrap; gap: 10px;">
                     <div>
-                        <h3 style="font-size: 16px; font-weight: 700;">📈 กราฟแนวโน้มประวัติการเบิกจ่ายและการเติมสต็อกรายเดือน (Monthly Movements & Trends)</h3>
-                        <p style="font-size: 12px; color: var(--text-secondary);">เปรียบเทียบปริมาณรวมการเบิกจ่ายออก (🔴 เส้นสีแดง) เทียบกับการรับเข้าเติมสต็อก (🟢 เส้นสีเขียว) ในแต่ละเดือน</p>
+                        <h3 style="font-size: 16px; font-weight: 700;" id="titleMonthlyTrend">📈 กราฟแนวโน้มประวัติการเบิกจ่ายและการเติมสต็อก</h3>
+                        <p style="font-size: 12px; color: var(--text-secondary);" id="subtitleMonthlyTrend">เปรียบเทียบปริมาณรวมการเบิกจ่ายออก (🔴 เส้นสีแดง) เทียบกับการรับเข้าเติมสต็อก (🟢 เส้นสีเขียว)</p>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                        <button class="btn btn-outline" id="btnTrend3M" style="padding: 4px 10px; font-size: 12px; font-weight: 600;" onclick="chartsPage.setTrendMonthRange(3)">
-                            📅 3 เดือน
-                        </button>
-                        <button class="btn btn-outline" id="btnTrend6M" style="padding: 4px 10px; font-size: 12px; font-weight: 600;" onclick="chartsPage.setTrendMonthRange(6)">
-                            📅 6 เดือน
-                        </button>
-                        <button class="btn btn-outline" id="btnTrend12M" style="padding: 4px 10px; font-size: 12px; font-weight: 600;" onclick="chartsPage.setTrendMonthRange(12)">
-                            📅 1 ปี (12 เดือน)
-                        </button>
-                        <button class="btn btn-outline" id="btnTrendAll" style="padding: 4px 10px; font-size: 12px; font-weight: 600;" onclick="chartsPage.setTrendMonthRange('all')">
-                            📜 ทั้งหมด
-                        </button>
-                        <button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; font-weight: 600;" onclick="chartsPage.downloadChartAsImage('chartMonthlyTrend', 'กราฟแนวโน้มการเบิกจ่ายและการเติมสต็อกรายเดือน.png')" title="เซฟเป็นไฟล์รูปภาพ PNG สำหรับนำเสนอในการประชุม">
-                            🖼️ เซฟรูปภาพ (PNG)
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <!-- Specific Item Dropdown Selector -->
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <span style="font-size: 12px; color: var(--text-secondary);">พัสดุ:</span>
+                            <select id="selectTrendItem" class="search-input" style="width: 260px; padding: 5px 10px; font-size: 12px; font-weight: 600;" onchange="chartsPage.setSelectedTrendItem(this.value)">
+                                <option value="all">📦 แสดงพัสดุรวมทุกรายการ (All Items)</option>
+                                <!-- Dynamic Item Options -->
+                            </select>
+                        </div>
+
+                        <!-- Granularity Toggle: Weekly vs Monthly -->
+                        <div style="display: inline-flex; border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden; background: rgba(0, 0, 0, 0.2);">
+                            <button class="btn" id="btnTrendGranularWeekly" style="padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 0;" onclick="chartsPage.setTrendGranularity('weekly')">
+                                📅 รายสัปดาห์
+                            </button>
+                            <button class="btn" id="btnTrendGranularMonthly" style="padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 0;" onclick="chartsPage.setTrendGranularity('monthly')">
+                                📆 รายเดือน
+                            </button>
+                        </div>
+
+                        <!-- Range Selection -->
+                        <button class="btn btn-outline" id="btnTrend3M" style="padding: 4px 8px; font-size: 11px;" onclick="chartsPage.setTrendMonthRange(3)">3 ช่วง</button>
+                        <button class="btn btn-outline" id="btnTrend6M" style="padding: 4px 8px; font-size: 11px;" onclick="chartsPage.setTrendMonthRange(6)">6 ช่วง</button>
+                        <button class="btn btn-outline" id="btnTrend12M" style="padding: 4px 8px; font-size: 11px;" onclick="chartsPage.setTrendMonthRange(12)">12 ช่วง</button>
+                        <button class="btn btn-outline" id="btnTrendAll" style="padding: 4px 8px; font-size: 11px;" onclick="chartsPage.setTrendMonthRange('all')">📜 ทั้งหมด</button>
+                        <button class="btn btn-outline" style="padding: 4px 8px; font-size: 11px;" onclick="chartsPage.downloadChartAsImage('chartMonthlyTrend', 'กราฟแนวโน้มประวัติการเบิกจ่ายและการเติมสต็อก.png')" title="เซฟเป็นไฟล์รูปภาพ PNG สำหรับนำเสนอในการประชุม">
+                            🖼️ PNG
                         </button>
                     </div>
                 </div>
