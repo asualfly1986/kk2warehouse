@@ -31,6 +31,9 @@
                 <li class="nav-item active" data-tab="dashboard">
                     <span>📊</span> ภาพรวมคลัง (Dashboard)
                 </li>
+                <li class="nav-item" onclick="window.location.href='charts.html'">
+                    <span>📈</span> ศูนย์รวมกราฟ (Analytics)
+                </li>
                 <li class="nav-item" data-tab="scan">
                     <span>📷</span> สแกนบาร์โค้ด เบิก-รับ
                 </li>
@@ -71,6 +74,9 @@
                 <div class="top-actions">
                     <button class="btn btn-primary" onclick="app.switchTab('scan')">
                         ⚡ สแกนบาร์โค้ดเรียลไทม์
+                    </button>
+                    <button class="btn btn-primary" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); border-color: #6366f1;" onclick="window.location.href='charts.html'">
+                        📊 หน้าศูนย์รวมกราฟรวม (Analytics)
                     </button>
                     <button class="btn btn-warning" onclick="app.exportReorderReport()" style="display: inline-flex; align-items: center; gap: 8px;">
                         <img src="https://lh3.googleusercontent.com/d/1NlyJ3Hu-nC9CjVQD8YRNjFdaChjF1O44" alt="PEA Logo" style="width: 22px; height: 22px; object-fit: contain;"> ⚠️ ส่งรายงานที่ต้องจัดหา/เตือน

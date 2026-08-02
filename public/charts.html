@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ศูนย์รวมกราฟและวิเคราะห์ข้อมูลพัสดุ (PEA Warehouse Analytics Dashboard)</title>
+    
+    <!-- CSS Dependencies -->
+    <link rel="stylesheet" href="css/styles.css?v=13.0">
+    
+    <!-- JS Dependencies (Chart.js via CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand-header">
+                <div class="brand-logo">
+                    <img src="ภาพอุปกรณ์/pea_logo_designed.svg" alt="PEA Logo" onerror="this.onerror=null; this.src='https://lh3.googleusercontent.com/d/1NlyJ3Hu-nC9CjVQD8YRNjFdaChjF1O44';">
+                </div>
+                <div class="brand-title">
+                    <h1>คลังพัสดุไฟฟ้า</h1>
+                    <p>ผปบ.กฟส.ขก.2</p>
+                </div>
+            </div>
+
+            <ul class="nav-menu nav-list">
+                <li class="nav-item" onclick="window.location.href='index.html'">
+                    <span class="nav-icon">🏠</span>
+                    <span>กลับหน้าหลัก</span>
+                </li>
+                <li class="nav-item active">
+                    <span class="nav-icon">📊</span>
+                    <span>ศูนย์รวมกราฟ</span>
+                </li>
+                <li class="nav-item" onclick="window.location.href='index.html#stock'">
+                    <span class="nav-icon">📦</span>
+                    <span>รายการพัสดุ</span>
+                </li>
+                <li class="nav-item" onclick="window.location.href='index.html#scan'">
+                    <span class="nav-icon">📷</span>
+                    <span>สแกนบาร์โค้ด</span>
+                </li>
+            </ul>
+
+            <div class="sidebar-footer">
+                <p>PEA Warehouse Analytics v13.0</p>
+                <p>© 2026 ผปบ.กฟส.ขก.2</p>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Top Action Header -->
+            <header class="top-bar">
+                <div>
+                    <h2 class="page-title">📊 ศูนย์รวมกราฟและวิเคราะห์ข้อมูลพัสดุ (Analytics Dashboard)</h2>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-top: 2px;">
+                        หน้ารวมแผนภูมิ แผนภาพ และการวิเคราะห์เปรียบเทียบข้อมูลพัสดุในคลังทุกรูปแบบ
+                    </p>
+                </div>
+                <div class="top-actions">
+                    <button class="btn btn-outline" onclick="window.location.href='index.html'">
+                        🏠 กลับสู่หน้าหลักระบบคลัง
+                    </button>
+                    <button class="btn btn-primary" onclick="chartsPage.refreshAllCharts()">
+                        🔄 อัปเดตกราฟเรียลไทม์
+                    </button>
+                </div>
+            </header>
+
+            <!-- KPI Summary Cards Bar -->
+            <div class="stats-grid" id="analyticsKpiGrid">
+                <div class="stat-card">
+                    <div class="stat-icon icon-blue">📦</div>
+                    <div class="stat-info">
+                        <div class="stat-title">พัสดุทั้งหมด</div>
+                        <div class="stat-value" id="kpiTotalItems">0</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-red">🚨</div>
+                    <div class="stat-info">
+                        <div class="stat-title">ต้องจัดหาด่วน (<50%)</div>
+                        <div class="stat-value" id="kpiOutOfStock">0</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-orange">⚠️</div>
+                    <div class="stat-info">
+                        <div class="stat-title">เตือนสต็อกต่ำ (50-60%)</div>
+                        <div class="stat-value" id="kpiLowStock">0</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon icon-green">🟢</div>
+                    <div class="stat-info">
+                        <div class="stat-title">สต็อกอยู่ในเกณฑ์ดี</div>
+                        <div class="stat-value" id="kpiGoodStock">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Section Grid 1 -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px; margin-bottom: 24px;">
+                <!-- Chart 1: Stock Status Distribution Doughnut Chart -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div>
+                            <h3 style="font-size: 16px; font-weight: 700;">🍩 แผนภูมิสัดส่วนสถานะพัสดุ (Stock Status Distribution)</h3>
+                            <p style="font-size: 12px; color: var(--text-secondary);">แบ่งตามเกณฑ์ 6 ระดับ (เกิน, เต็ม, ดี, พอดี, เตือน, จัดซื้อ)</p>
+                        </div>
+                    </div>
+                    <div class="chart-wrapper" style="height: 300px;">
+                        <canvas id="chartStatusDoughnut"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart 2: Warehouse Total Comparison Bar Chart -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div>
+                            <h3 style="font-size: 16px; font-weight: 700;">🏢 ยอดรวมจำนวนพัสดุสะสมแยกตามคลัง</h3>
+                            <p style="font-size: 12px; color: var(--text-secondary);">เปรียบเทียบยอดรวมทั้งหมดใน 2601, MB52, WMS และ sloc 0023</p>
+                        </div>
+                    </div>
+                    <div class="chart-wrapper" style="height: 300px;">
+                        <canvas id="chartLocationsBar"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Section Grid 2 -->
+            <div style="display: flex; flex-direction: column; gap: 20px; margin-bottom: 24px;">
+                <!-- Chart 3: Top Stock Deficit Items Horizontal Bar Chart -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div>
+                            <h3 style="font-size: 16px; font-weight: 700;">🚨 10 อันดับรายการพัสดุที่ขาดสต็อกและต้องจัดหาด่วนที่สุด</h3>
+                            <p style="font-size: 12px; color: var(--text-secondary);">เรียงลำดับตามจำนวนส่วนต่างขาดคงเหลือเทียบเกณฑ์มาตรฐาน (Deficit Qty)</p>
+                        </div>
+                    </div>
+                    <div class="chart-wrapper" style="height: 340px;">
+                        <canvas id="chartTopDeficitBar"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart 4: Full Item Stock vs Standard Bar Chart (with Pagination) -->
+                <div class="chart-card">
+                    <div class="chart-header" style="flex-wrap: wrap; gap: 12px;">
+                        <div>
+                            <h3 style="font-size: 16px; font-weight: 700;">📊 กราฟเปรียบเทียบพัสดุคงเหลือจริง 2601 เทียบเกณฑ์มาตรฐาน</h3>
+                            <p style="font-size: 12px; color: var(--text-secondary);">💡 คลิกที่แท่งกราฟเพื่อดูชื่อพัสดุเต็มและรายละเอียด</p>
+                        </div>
+                        <div id="chartPageControls" style="display: flex; align-items: center; gap: 8px;">
+                            <!-- Dynamic Page Buttons -->
+                        </div>
+                    </div>
+                    <div class="chart-wrapper" style="height: 320px;">
+                        <canvas id="chartMainBar"></canvas>
+                    </div>
+                    <div id="chartItemPreview"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Application Logic Scripts -->
+    <script src="js/data.js"></script>
+    <script src="js/charts_page.js"></script>
+</body>
+</html>
