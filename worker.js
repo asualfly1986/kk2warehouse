@@ -74,30 +74,29 @@ export default {
         // 2. GET /api/logs
         if (url.pathname === '/api/logs' && request.method === 'GET') {
             try {
+                let allLogs = [];
                 if (db) {
-                    const { results } = await db.prepare(`
-                        SELECT id, timestamp, type, item_code AS itemCode, item_name AS itemName, qty, current_stock AS currentStock, requester, work_order AS workOrder, note
-                        FROM logs
-                        ORDER BY timestamp DESC
-                        LIMIT 200
-                    `).all();
-
-                    return new Response(JSON.stringify(results || []), {
-                        headers: { 'Content-Type': 'application/json', ...corsHeaders }
-                    });
-                } else if (env && env.WAREHOUSE_KV) {
+                    try {
+                        const { results } = await db.prepare(`
+                            SELECT id, timestamp, type, item_code AS itemCode, item_name AS itemName, qty, current_stock AS currentStock, requester, work_order AS workOrder, note
+                            FROM logs
+                            ORDER BY timestamp DESC
+                            LIMIT 200
+                        `).all();
+                        if (results && results.length > 0) allLogs = results;
+                    } catch (err) {}
+                }
+                
+                if (allLogs.length === 0 && env && env.WAREHOUSE_KV) {
                     const kvLogs = await env.WAREHOUSE_KV.get('pea_warehouse_logs', { type: 'json' });
-                    return new Response(JSON.stringify(kvLogs || []), {
-                        headers: { 'Content-Type': 'application/json', ...corsHeaders }
-                    });
+                    if (kvLogs) allLogs = kvLogs;
                 }
 
-                return new Response(JSON.stringify([]), { headers: corsHeaders });
-            } catch (err) {
-                return new Response(JSON.stringify({ error: err.message }), {
-                    status: 500,
+                return new Response(JSON.stringify(allLogs || []), {
                     headers: { 'Content-Type': 'application/json', ...corsHeaders }
                 });
+            } catch (err) {
+                return new Response(JSON.stringify([]), { headers: corsHeaders });
             }
         }
 
@@ -120,38 +119,64 @@ export default {
                     `).bind(code, currentQty, mb52Qty, wmsQty, kk23Qty, currentQty, mb52Qty, wmsQty, kk23Qty).run();
 
                     if (log) {
-                        await db.prepare(`
-                            INSERT INTO logs (timestamp, type, item_code, item_name, qty, current_stock, requester, work_order, note)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        `).bind(
-                            log.timestamp || new Date().toISOString(),
-                            log.type || 'update',
-                            log.itemCode || code,
-                            log.itemName || '',
-                            log.qty || 0,
-                            log.currentStock || currentQty || 0,
-                            log.requester || '',
-                            log.workOrder || '',
-                            log.note || ''
-                        ).run();
-                    }
-                } else if (env && env.WAREHOUSE_KV && code) {
-                    let items = await env.WAREHOUSE_KV.get('pea_warehouse_db', { type: 'json' }) || [];
-                    let item = items.find(i => i.code === code);
-                    if (item) {
-                        if (currentQty !== undefined) item.currentQty = currentQty;
-                        if (mb52Qty !== undefined) item.mb52Qty = mb52Qty;
-                        if (wmsQty !== undefined) item.wmsQty = wmsQty;
-                        if (kk23Qty !== undefined) item.kk23Qty = kk23Qty;
-                        item.lastUpdated = new Date().toISOString();
-                    }
-                    await env.WAREHOUSE_KV.put('pea_warehouse_db', JSON.stringify(items));
+                        try {
+                            await db.prepare(`
+                                CREATE TABLE IF NOT EXISTS logs (
+                                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                    timestamp TEXT,
+                                    type TEXT,
+                                    item_code TEXT,
+                                    item_name TEXT,
+                                    qty REAL,
+                                    current_stock REAL,
+                                    requester TEXT,
+                                    work_order TEXT,
+                                    note TEXT
+                                )
+                            `).run();
 
-                    if (log) {
-                        let logs = await env.WAREHOUSE_KV.get('pea_warehouse_logs', { type: 'json' }) || [];
-                        logs.unshift(log);
-                        await env.WAREHOUSE_KV.put('pea_warehouse_logs', JSON.stringify(logs));
+                            await db.prepare(`
+                                INSERT INTO logs (timestamp, type, item_code, item_name, qty, current_stock, requester, work_order, note)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            `).bind(
+                                log.timestamp || new Date().toISOString(),
+                                log.type || 'update',
+                                log.itemCode || code,
+                                log.itemName || '',
+                                log.qty || 0,
+                                log.currentStock || currentQty || 0,
+                                log.requester || '',
+                                log.workOrder || '',
+                                log.note || ''
+                            ).run();
+                        } catch(lErr) {
+                            console.error("D1 Log Insert Error:", lErr);
+                        }
                     }
+                }
+                
+                if (env && env.WAREHOUSE_KV && (code || log)) {
+                    try {
+                        let items = await env.WAREHOUSE_KV.get('pea_warehouse_db', { type: 'json' }) || [];
+                        if (code) {
+                            let item = items.find(i => i.code === code);
+                            if (item) {
+                                if (currentQty !== undefined) item.currentQty = currentQty;
+                                if (mb52Qty !== undefined) item.mb52Qty = mb52Qty;
+                                if (wmsQty !== undefined) item.wmsQty = wmsQty;
+                                if (kk23Qty !== undefined) item.kk23Qty = kk23Qty;
+                                item.lastUpdated = new Date().toISOString();
+                            }
+                            await env.WAREHOUSE_KV.put('pea_warehouse_db', JSON.stringify(items));
+                        }
+
+                        if (log) {
+                            let logs = await env.WAREHOUSE_KV.get('pea_warehouse_logs', { type: 'json' }) || [];
+                            logs.unshift(log);
+                            if (logs.length > 300) logs = logs.slice(0, 300);
+                            await env.WAREHOUSE_KV.put('pea_warehouse_logs', JSON.stringify(logs));
+                        }
+                    } catch(kvErr) {}
                 }
 
                 return new Response(JSON.stringify({ success: true, mode: db ? 'd1' : 'kv' }), {
@@ -201,22 +226,39 @@ export default {
                 }
 
                 if (db && logsToSync.length > 0) {
-                    const logStmt = db.prepare(`
-                        INSERT INTO logs (timestamp, type, item_code, item_name, qty, current_stock, requester, work_order, note)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    `);
-                    const logBatch = logsToSync.slice(0, 50).map(l => logStmt.bind(
-                        l.timestamp || new Date().toISOString(),
-                        l.type || 'out',
-                        l.code || l.itemCode || '',
-                        l.name || l.itemName || '',
-                        Math.abs(Number(l.qty || 0)),
-                        Number(l.balanceAfter || l.currentStock || 0),
-                        l.requester || '-',
-                        l.workOrder || '-',
-                        l.note || '-'
-                    ));
-                    await db.batch(logBatch);
+                    try {
+                        await db.prepare(`
+                            CREATE TABLE IF NOT EXISTS logs (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                timestamp TEXT,
+                                type TEXT,
+                                item_code TEXT,
+                                item_name TEXT,
+                                qty REAL,
+                                current_stock REAL,
+                                requester TEXT,
+                                work_order TEXT,
+                                note TEXT
+                            )
+                        `).run();
+
+                        const logStmt = db.prepare(`
+                            INSERT INTO logs (timestamp, type, item_code, item_name, qty, current_stock, requester, work_order, note)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        `);
+                        const logBatch = logsToSync.slice(0, 100).map(l => logStmt.bind(
+                            l.timestamp || new Date().toISOString(),
+                            l.type || 'out',
+                            l.code || l.itemCode || '',
+                            l.name || l.itemName || '',
+                            Math.abs(Number(l.qty || 0)),
+                            Number(l.balanceAfter || l.currentStock || 0),
+                            l.requester || '-',
+                            l.workOrder || '-',
+                            l.note || '-'
+                        ));
+                        await db.batch(logBatch);
+                    } catch(lBatchErr) {}
                 }
 
                 if (env && env.WAREHOUSE_KV) {

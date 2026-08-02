@@ -1793,8 +1793,10 @@ class WarehouseApp {
         tbody.innerHTML = logs.map(log => {
             const dateStr = new Date(log.timestamp).toLocaleString("th-TH");
             let typeBadge = `<span class="badge badge-info">📤 เบิกจ่าย</span>`;
-            if (log.type === "receive") typeBadge = `<span class="badge badge-success">📥 รับเข้า</span>`;
-            if (log.type === "audit") typeBadge = `<span class="badge badge-orange">📋 ตรวจนับ</span>`;
+            if (log.type === "receive" || log.type === "in") typeBadge = `<span class="badge badge-success">📥 รับเข้า</span>`;
+            if (log.type === "audit" || log.type === "count") typeBadge = `<span class="badge badge-orange">📋 ตรวจนับ</span>`;
+            if (log.type === "out" || log.type === "dispense" || log.type === "withdraw") typeBadge = `<span class="badge badge-danger">🔴 เบิกจ่าย</span>`;
+            if (log.type === "import") typeBadge = `<span class="badge badge-primary">📥 นำเข้าพัสดุ</span>`;
 
             const item = this.db.getItemByCode(log.code);
             const noticeHtml = this.getItemNoticeHtml(item, "10px");
