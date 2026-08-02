@@ -46,10 +46,11 @@ class WarehouseApp {
         try {
             const synced = await this.db.syncFromCloudflare();
             if (synced) {
+                this.renderHistoryTable();
                 if (this.activeTab === "dashboard") this.renderDashboard();
-                if (this.activeTab === "stock") this.renderStockTable();
+                if (this.activeTab === "stock") this.renderStockTable(document.getElementById("mainSearch")?.value || "");
                 if (this.activeTab === "alerts") this.renderAlertsPage();
-                if (this.activeTab === "comp") this.renderComparisonPage();
+                if (this.activeTab === "comp") this.renderComparisonTable();
                 if (this.activeTab === "history") this.renderHistoryTable();
             }
         } catch (e) {

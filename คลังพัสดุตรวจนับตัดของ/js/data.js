@@ -413,14 +413,16 @@ class StockDatabase {
                     const mergedArray = Array.from(mergedLogsMap.values());
                     mergedArray.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-                    if (mergedArray.length !== existingLogs.length) {
-                        this.saveLogs(mergedArray);
-                        hasChanges = true;
-                        console.log("☁️ Successfully synced transaction logs from Cloudflare D1!");
-                        if (window.chartsPage && typeof window.chartsPage.renderLogsTable === 'function') {
-                            window.chartsPage.renderLogsTable();
-                            window.chartsPage.renderMonthlyTrendChart();
-                        }
+                    this.saveLogs(mergedArray);
+                    hasChanges = true;
+                    console.log("☁️ Successfully synced transaction logs from Cloudflare D1!");
+                    
+                    if (window.app && typeof window.app.renderHistoryTable === 'function') {
+                        window.app.renderHistoryTable();
+                    }
+                    if (window.chartsPage && typeof window.chartsPage.renderLogsTable === 'function') {
+                        window.chartsPage.renderLogsTable();
+                        window.chartsPage.renderMonthlyTrendChart();
                     }
                 }
             }

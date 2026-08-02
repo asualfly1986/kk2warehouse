@@ -200,6 +200,25 @@ export default {
                     await db.batch(batchStatements);
                 }
 
+                if (db && logsToSync.length > 0) {
+                    const logStmt = db.prepare(`
+                        INSERT INTO logs (timestamp, type, item_code, item_name, qty, current_stock, requester, work_order, note)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `);
+                    const logBatch = logsToSync.slice(0, 50).map(l => logStmt.bind(
+                        l.timestamp || new Date().toISOString(),
+                        l.type || 'out',
+                        l.code || l.itemCode || '',
+                        l.name || l.itemName || '',
+                        Math.abs(Number(l.qty || 0)),
+                        Number(l.balanceAfter || l.currentStock || 0),
+                        l.requester || '-',
+                        l.workOrder || '-',
+                        l.note || '-'
+                    ));
+                    await db.batch(logBatch);
+                }
+
                 if (env && env.WAREHOUSE_KV) {
                     if (itemsToSync.length > 0) {
                         await env.WAREHOUSE_KV.put('pea_warehouse_db', JSON.stringify(itemsToSync));
