@@ -1205,8 +1205,13 @@ body {
     box-shadow: 0 20px 40px rgba(0,0,0,0.8);
 }
 
-/* Print Media Styles for Reports & History Logs */
+/* Print Media Styles for Reports & Barcode Labels */
 @media print {
+    @page {
+        margin: 10mm;
+        size: A4 portrait;
+    }
+
     body {
         background: #ffffff !important;
         color: #000000 !important;
@@ -1218,9 +1223,12 @@ body {
     .top-actions,
     .nav-list,
     .btn,
+    .button,
     .modal-overlay,
     .filter-pill,
-    .search-filter-bar {
+    .search-filter-bar,
+    .no-print,
+    #page-labels .table-card {
         display: none !important;
     }
 
@@ -1232,6 +1240,37 @@ body {
         margin: 0 !important;
         padding: 0 !important;
         height: auto !important;
+    }
+
+    #page-labels {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .barcode-labels-grid {
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 12px !important;
+        background: transparent !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .barcode-label-item {
+        border: 2px solid #000000 !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        padding: 8px 10px !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        box-sizing: border-box !important;
+        text-align: center !important;
+        border-radius: 6px !important;
+    }
+
+    .barcode-label-item button,
+    .barcode-label-item .btn {
+        display: none !important;
     }
 
     .table-card {
