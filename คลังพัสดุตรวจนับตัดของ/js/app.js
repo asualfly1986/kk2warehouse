@@ -194,6 +194,11 @@ class WarehouseApp {
             return;
         }
 
+        // Verify Owner Password (Aunkung) BEFORE allowing file selection
+        if (!this.authenticateOwner(`เปลี่ยน/อัปเดตรูปถ่ายพัสดุ [${this.selectedItemForModal.name}]`)) {
+            return;
+        }
+
         const fileInput = document.getElementById("itemFileInput");
         if (fileInput) {
             fileInput.value = "";
@@ -267,6 +272,28 @@ class WarehouseApp {
             img.src = rawBase64;
         };
         reader.readAsDataURL(file);
+    }
+
+    handleResetSingleItemPhoto() {
+        if (!this.selectedItemForModal) return;
+
+        // Verify Owner Password (Aunkung)
+        if (!this.authenticateOwner(`รีเซตรูปภาพพัสดุ [${this.selectedItemForModal.name}] กลับเป็นค่าเริ่มต้น`)) {
+            return;
+        }
+
+        try {
+            this.db.resetItemImage(this.selectedItemForModal.code);
+            this.selectedItemForModal = { ...this.selectedItemForModal, imageUrl: null };
+            this.audio.playScanSuccess();
+            alert(`✅ คืนค่ารูปภาพพัสดุเริ่มต้นเรียบร้อยแล้ว`);
+            this.closeImageViewerModal();
+            if (this.activeTab === "dashboard") this.renderDashboard();
+            if (this.activeTab === "stock") this.renderStockTable();
+        } catch (err) {
+            this.audio.playError();
+            alert(`❌ เกิดข้อผิดพลาด: ${err.message}`);
+        }
     }
 
     /**
