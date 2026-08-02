@@ -23,7 +23,9 @@ class ChartsPageController {
 
     async init() {
         try {
-            await this.db.loadFromCloudD1();
+            if (typeof this.db.syncFromCloudflare === "function") {
+                await this.db.syncFromCloudflare();
+            }
         } catch (err) {
             console.warn("Cloud D1 sync fallback to local storage:", err);
         }
@@ -33,7 +35,9 @@ class ChartsPageController {
 
     async refreshAllCharts() {
         try {
-            await this.db.loadFromCloudD1();
+            if (typeof this.db.syncFromCloudflare === "function") {
+                await this.db.syncFromCloudflare();
+            }
         } catch (err) {}
         this.renderKpis();
         this.renderAllCharts();
