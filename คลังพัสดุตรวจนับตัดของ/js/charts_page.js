@@ -4,7 +4,7 @@
  */
 class ChartsPageController {
     constructor() {
-        this.db = new DataManager();
+        this.db = window.db || new StockDatabase();
         this.barPage = 0;
         this.pageSize = 20;
 
@@ -14,37 +14,49 @@ class ChartsPageController {
         this.topDeficitChart = null;
         this.mainBarChart = null;
 
-        document.addEventListener("DOMContentLoaded", () => this.init());
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", () => this.init());
+        } else {
+            this.init();
+        }
     }
 
-    init() {
+    async init() {
+        try {
+            await this.db.loadFromCloudD1();
+        } catch (err) {
+            console.warn("Cloud D1 sync fallback to local storage:", err);
+        }
         this.renderKpis();
         this.renderAllCharts();
     }
 
-    refreshAllCharts() {
+    async refreshAllCharts() {
+        try {
+            await this.db.loadFromCloudD1();
+        } catch (err) {}
         this.renderKpis();
         this.renderAllCharts();
     }
 
     renderKpis() {
-        const stats = this.db.calculateStats();
+        const stats = this.db.getStats ? this.db.getStats() : { totalSKU: 0, outOfStockCount: 0, lowCount: 0, goodCount: 0, fullCount: 0, normalCount: 0 };
         
         const elTotal = document.getElementById("kpiTotalItems");
         const elOut = document.getElementById("kpiOutOfStock");
         const elLow = document.getElementById("kpiLowStock");
         const elGood = document.getElementById("kpiGoodStock");
 
-        if (elTotal) elTotal.textContent = stats.totalItems;
-        if (elOut) elOut.textContent = stats.outOfStockCount;
-        if (elLow) elLow.textContent = stats.lowCount;
-        if (elGood) elGood.textContent = stats.goodCount + stats.fullCount + stats.normalCount;
+        if (elTotal) elTotal.textContent = stats.totalSKU || 0;
+        if (elOut) elOut.textContent = stats.outOfStockCount || 0;
+        if (elLow) elLow.textContent = stats.lowCount || 0;
+        if (elGood) elGood.textContent = (stats.goodCount || 0) + (stats.fullCount || 0) + (stats.normalCount || 0);
     }
 
     renderAllCharts() {
         if (typeof Chart === "undefined") return;
 
-        const stats = this.db.calculateStats();
+        const stats = this.db.getStats ? this.db.getStats() : { overCount: 0, fullCount: 0, goodCount: 0, normalCount: 0, lowCount: 0, outOfStockCount: 0 };
         const items = this.db.getItems();
 
         // 1. Doughnut Chart: Stock Status Breakdown

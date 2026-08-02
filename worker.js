@@ -200,6 +200,14 @@ export default {
             }
         }
 
+        // Route /charts and /charts/ to charts.html
+        if (url.pathname === '/charts' || url.pathname === '/charts/') {
+            const chartsUrl = new URL('/charts.html', request.url);
+            if (env && env.ASSETS) {
+                return env.ASSETS.fetch(new Request(chartsUrl, request));
+            }
+        }
+
         // Static Asset Pass-through for Cloudflare Pages/Workers
         if (env && env.ASSETS) {
             return env.ASSETS.fetch(request);
