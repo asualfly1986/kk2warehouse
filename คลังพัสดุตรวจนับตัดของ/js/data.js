@@ -209,7 +209,7 @@ class StockDatabase {
         this.saveItems(items); return items[itemIndex];
     }
 
-    updateLocationQuantities(code, mb52Qty, wmsQty, kk23Qty) {
+    async updateLocationQuantities(code, mb52Qty, wmsQty, kk23Qty) {
         const items = this.getItems();
         const itemIndex = items.findIndex(i => i.code === code);
         if (itemIndex === -1) throw new Error("ไม่พบพัสดุนี้ในระบบ");
@@ -223,7 +223,6 @@ class StockDatabase {
         item.kk23Qty = Number(kk23Qty) || 0;
         item.lastUpdated = new Date().toISOString(); 
         this.saveItems(items); 
-        this.pushToCloudflare();
 
         // Log import transaction
         const logs = this.getLogs();
@@ -242,11 +241,12 @@ class StockDatabase {
             note: `อัปเดตยอดคลัง (MB52: ${mb52Qty}, WMS: ${wmsQty}, sloc 0023: ${kk23Qty})`
         });
         this.saveLogs(logs);
+        await this.pushToCloudflare();
 
         return items[itemIndex];
     }
 
-    importLocationQuantitiesBatch(batchData) {
+    async importLocationQuantitiesBatch(batchData) {
         const items = this.getItems();
         const logs = this.getLogs();
         let updatedCount = 0;
@@ -289,7 +289,7 @@ class StockDatabase {
         });
         this.saveItems(items); 
         this.saveLogs(logs);
-        this.pushToCloudflare();
+        await this.pushToCloudflare();
         return updatedCount;
     }
 
@@ -422,7 +422,7 @@ class StockDatabase {
                 } else if (existingLogs.length > 0) {
                     // D1 logs empty but local storage has logs -> Auto-push local logs to D1!
                     console.log("☁️ D1 logs empty. Auto-pushing local logs to D1...");
-                    this.pushToCloudflare();
+                    await this.pushToCloudflare();
                 }
             }
 
@@ -451,7 +451,7 @@ class StockDatabase {
     getItemByCode(code) { const items = this.getItems(); return items.find(i => i.code === code || i.code.trim() === code.trim()); }
 
     // 🟢 ยิงคำสั่งอัปเดตยอดคงเหลือไปที่ Cloudflare D1
-    processTransaction(type, code, qty, requester = "-", workOrder = "-", note = "") {
+    async processTransaction(type, code, qty, requester = "-", workOrder = "-", note = "") {
         if (type === "audit" && !this.getAuditPermission()) throw new Error("⚠️ สิทธิ์ปิดใช้งานโดย Admin");
 
         const items = this.getItems();
@@ -500,37 +500,43 @@ class StockDatabase {
         logs.unshift(logObj);
         this.saveLogs(logs);
 
-        // 🟢 ส่งไปอัปเดตฐานข้อมูล D1
+        // 🟢 MUST AWAIT NETWORK REQUESTS ON BOTH PC & MOBILE SO POST COMPLETES TO CLOUDFLARE D1
         if (changeToSend !== 0) {
             const baseUrl = this.getApiBaseUrl();
-            fetch(`${baseUrl}/api/update`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    id: code, 
-                    code: code,
-                    name: item.name, 
-                    standard: item.standard, 
-                    currentQty: newQty,
-                    mb52Qty: item.mb52Qty || 0,
-                    wmsQty: item.wmsQty || 0,
-                    kk23Qty: item.kk23Qty || 0,
-                    change: changeToSend,
-                    log: {
-                        timestamp: logObj.timestamp,
-                        type: logType,
-                        itemCode: code,
-                        itemName: item.name,
-                        qty: logObj.qty,
-                        currentStock: newQty,
-                        requester: requester,
-                        workOrder: workOrder,
-                        note: note
-                    }
-                })
-            }).catch(e => console.error("D1 Update Error:", e));
+            try {
+                await fetch(`${baseUrl}/api/update`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        id: code, 
+                        code: code,
+                        name: item.name, 
+                        standard: item.standard, 
+                        currentQty: newQty,
+                        mb52Qty: item.mb52Qty || 0,
+                        wmsQty: item.wmsQty || 0,
+                        kk23Qty: item.kk23Qty || 0,
+                        change: changeToSend,
+                        log: {
+                            timestamp: logObj.timestamp,
+                            type: logType,
+                            itemCode: code,
+                            itemName: item.name,
+                            qty: logObj.qty,
+                            unit: item.unit || "ชิ้น",
+                            balanceBefore: oldQty,
+                            currentStock: newQty,
+                            requester: requester,
+                            workOrder: workOrder,
+                            note: note
+                        }
+                    })
+                });
+            } catch (e) {
+                console.error("D1 Update Error:", e);
+            }
 
-            this.pushToCloudflare();
+            await this.pushToCloudflare();
         }
 
         const updatedItem = items[itemIndex];
