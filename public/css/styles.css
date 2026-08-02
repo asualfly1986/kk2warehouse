@@ -430,6 +430,41 @@ body {
     color: white;
     border-color: var(--accent-primary);
     box-shadow: var(--shadow-glow);
+}
+
+/* SCANNER PAGE STYLING (Un-cramped & Mobile Optimized) */
+.scanner-box {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 28px 24px;
+    box-shadow: var(--shadow-card);
+    margin-bottom: 24px;
+}
+
+.scan-input-group {
+    display: flex;
+    gap: 12px;
+}
+
+.scan-input {
+    flex: 1;
+    background: var(--bg-primary);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 14px 18px;
+    color: var(--text-primary);
+    font-size: 16px;
+    font-family: inherit;
+    transition: var(--transition-fast);
+}
+
+.scan-input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+}
+
 /* Live Search Autocomplete Suggestions Dropdown */
 .search-autocomplete-box {
     position: absolute;
@@ -903,6 +938,22 @@ body {
     }
 
     /* Table Cards & Filter Bar for Mobile */
+    .scanner-box {
+        padding: 20px 16px !important;
+        margin-bottom: 20px !important;
+    }
+
+    .scan-input-group {
+        flex-direction: column !important;
+        gap: 10px !important;
+    }
+
+    .scan-input-group .btn {
+        width: 100% !important;
+        font-size: 15px !important;
+        padding: 12px !important;
+    }
+
     .table-card {
         margin-bottom: 20px !important;
         position: relative !important;
