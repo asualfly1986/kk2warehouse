@@ -270,23 +270,25 @@ class StockDatabase {
                 if (row.kk23Qty !== undefined) item.kk23Qty = Number(row.kk23Qty) || 0;
                 item.lastUpdated = nowIso;
                 updatedCount++;
-
-                logs.unshift({
-                    id: "LOG-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
-                    timestamp: nowIso,
-                    type: "import",
-                    code: item.code,
-                    name: item.name,
-                    qty: item.currentQty,
-                    unit: item.unit || "ชิ้น",
-                    balanceBefore: oldQty,
-                    balanceAfter: item.currentQty,
-                    requester: "Admin (นำเข้าไฟล์)",
-                    workOrder: "IMPORT-BATCH-EXCEL",
-                    note: `นำเข้าพัสดุแบบไฟล์ (คงเหลือ 2601: ${item.currentQty})`
-                });
             }
         });
+
+        if (updatedCount > 0) {
+            logs.unshift({
+                id: "LOG-" + Date.now(),
+                timestamp: nowIso,
+                type: "import",
+                code: "BATCH-IMPORT",
+                name: `อัปเดตยอดสต็อกพัสดุยกชุดผ่านไฟล์ Excel (${updatedCount} รายการ)`,
+                qty: updatedCount,
+                unit: "รายการ",
+                balanceBefore: 0,
+                balanceAfter: updatedCount,
+                requester: "Admin (นำเข้าไฟล์)",
+                workOrder: "IMPORT-BATCH-EXCEL",
+                note: `อัปเดตยอดพัสดุสำเร็จ ${updatedCount} รายการ`
+            });
+        }
         this.saveItems(items); 
         this.saveLogs(logs);
         await this.pushToCloudflare();
@@ -325,14 +327,14 @@ class StockDatabase {
         return 'https://kk2warehouse.asualfly1986.workers.dev';
     }
 
-    // 🟢 ซิงค์กับฐานข้อมูล D1
+    // 🟢 ซิงค์ข้อมูลสต็อกและประวัติจากฐานข้อมูลหลัก Cloudflare D1 (Master Truth Sync)
     async syncFromCloudflare() {
         try {
             const baseUrl = this.getApiBaseUrl();
             let hasChanges = false;
             const cacheBust = `t=${Date.now()}`;
 
-            // 1. Sync Inventory Items Stock
+            // 1. Sync Inventory Items Stock from Cloudflare D1
             const res = await fetch(`${baseUrl}/api/inventory?${cacheBust}`);
             if (res.ok) {
                 const dbItems = await res.json();
@@ -385,12 +387,10 @@ class StockDatabase {
                 }
             }
 
-            // 2. Sync Transaction History Logs directly from D1 Database
+            // 2. Sync Transaction History Logs directly from Cloudflare D1 Master Database
             const logsRes = await fetch(`${baseUrl}/api/logs?${cacheBust}`);
             if (logsRes.ok) {
                 const dbLogs = await logsRes.json();
-                let existingLogs = this.getLogs();
-
                 if (Array.isArray(dbLogs) && dbLogs.length > 0) {
                     const formattedLogs = dbLogs.map(l => ({
                         id: l.id || ("LOG-" + new Date(l.timestamp || Date.now()).getTime()),
@@ -407,20 +407,16 @@ class StockDatabase {
                         note: l.note || '-'
                     }));
 
-                    const mergedMap = new Map();
-                    existingLogs.forEach(l => mergedMap.set((l.timestamp || '') + '_' + (l.code || '') + '_' + (l.qty || 0), l));
-                    formattedLogs.forEach(l => mergedMap.set((l.timestamp || '') + '_' + (l.code || '') + '_' + (l.qty || 0), l));
+                    formattedLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-                    const mergedArray = Array.from(mergedMap.values());
-                    mergedArray.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-                    if (JSON.stringify(mergedArray) !== JSON.stringify(existingLogs)) {
-                        this.saveLogs(mergedArray);
+                    const existingLogs = this.getLogs();
+                    if (JSON.stringify(formattedLogs) !== JSON.stringify(existingLogs)) {
+                        this.saveLogs(formattedLogs);
                         hasChanges = true;
-                        console.log("☁️ Successfully synced logs with Cloudflare D1 Database!");
+                        console.log("☁️ Successfully updated master logs from Cloudflare D1 Database!");
                     }
-                } else if (existingLogs.length > 0) {
-                    // D1 logs empty but local storage has logs -> Auto-push local logs to D1!
+                } else if (this.getLogs().length > 0) {
+                    // Auto-push local logs to D1 if D1 is empty
                     console.log("☁️ D1 logs empty. Auto-pushing local logs to D1...");
                     await this.pushToCloudflare();
                 }
