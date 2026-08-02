@@ -172,13 +172,38 @@ class ChartsPageController {
             .filter(i => i.deficit > 0)
             .sort((a, b) => b.deficit - a.deficit);
 
-        // Dynamically adjust wrapper height based on number of items so bars are never squished
+        // Smart multi-line text wrapping so EVERY single character of item names is displayed completely!
+        const wrapText = (str, maxLen = 28) => {
+            if (!str) return "";
+            if (str.length <= maxLen) return str;
+            const words = str.split(" ");
+            const lines = [];
+            let curr = "";
+            words.forEach(w => {
+                if ((curr + " " + w).trim().length <= maxLen) {
+                    curr = (curr + " " + w).trim();
+                } else {
+                    if (curr) lines.push(curr);
+                    curr = w;
+                }
+            });
+            if (curr) lines.push(curr);
+            if (lines.length > 1) return lines;
+            
+            const result = [];
+            for (let i = 0; i < str.length; i += maxLen) {
+                result.push(str.slice(i, i + maxLen));
+            }
+            return result;
+        };
+
+        // Dynamically adjust wrapper height based on multi-line text items
         if (canvas.parentElement) {
-            const dynamicHeight = Math.max(340, deficitItems.length * 30);
+            const dynamicHeight = Math.max(380, deficitItems.length * 44);
             canvas.parentElement.style.height = `${dynamicHeight}px`;
         }
 
-        const labels = deficitItems.map(i => i.name.length > 25 ? i.name.slice(0, 25) + "..." : i.name);
+        const labels = deficitItems.map(i => wrapText(i.name, 28));
         const data = deficitItems.map(i => i.deficit);
 
         const ctx = canvas.getContext("2d");
@@ -199,13 +224,23 @@ class ChartsPageController {
                 indexAxis: "y",
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: {
+                    padding: {
+                        left: 10,
+                        right: 15
+                    }
+                },
                 scales: {
                     x: {
                         ticks: { color: "#94a3b8", font: { family: "Sarabun", size: 11 } },
                         grid: { color: "rgba(255, 255, 255, 0.05)" }
                     },
                     y: {
-                        ticks: { color: "#94a3b8", font: { family: "Sarabun", size: 11 } },
+                        ticks: { 
+                            color: "#f8fafc", 
+                            font: { family: "Sarabun", size: 11, weight: "bold" },
+                            padding: 6
+                        },
                         grid: { display: false }
                     }
                 },
