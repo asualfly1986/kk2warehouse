@@ -385,11 +385,13 @@ class StockDatabase {
                 }
             }
 
-            // 2. Sync Transaction History Logs directly from D1 Database (Single Source of Truth)
+            // 2. Sync Transaction History Logs directly from D1 Database
             const logsRes = await fetch(`${baseUrl}/api/logs?${cacheBust}`);
             if (logsRes.ok) {
                 const dbLogs = await logsRes.json();
-                if (Array.isArray(dbLogs)) {
+                let existingLogs = this.getLogs();
+
+                if (Array.isArray(dbLogs) && dbLogs.length > 0) {
                     const formattedLogs = dbLogs.map(l => ({
                         id: l.id || ("LOG-" + new Date(l.timestamp || Date.now()).getTime()),
                         timestamp: l.timestamp || new Date().toISOString(),
@@ -405,12 +407,22 @@ class StockDatabase {
                         note: l.note || '-'
                     }));
 
-                    let existingLogs = this.getLogs();
-                    if (JSON.stringify(formattedLogs) !== JSON.stringify(existingLogs)) {
-                        this.saveLogs(formattedLogs);
+                    const mergedMap = new Map();
+                    existingLogs.forEach(l => mergedMap.set((l.timestamp || '') + '_' + (l.code || '') + '_' + (l.qty || 0), l));
+                    formattedLogs.forEach(l => mergedMap.set((l.timestamp || '') + '_' + (l.code || '') + '_' + (l.qty || 0), l));
+
+                    const mergedArray = Array.from(mergedMap.values());
+                    mergedArray.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+                    if (JSON.stringify(mergedArray) !== JSON.stringify(existingLogs)) {
+                        this.saveLogs(mergedArray);
                         hasChanges = true;
-                        console.log("☁️ Successfully synced 100% strict logs from Cloudflare D1 Database!");
+                        console.log("☁️ Successfully synced logs with Cloudflare D1 Database!");
                     }
+                } else if (existingLogs.length > 0) {
+                    // D1 logs empty but local storage has logs -> Auto-push local logs to D1!
+                    console.log("☁️ D1 logs empty. Auto-pushing local logs to D1...");
+                    this.pushToCloudflare();
                 }
             }
 
