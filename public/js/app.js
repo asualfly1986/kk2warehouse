@@ -1508,6 +1508,9 @@ class WarehouseApp {
                             <button class="btn btn-outline" style="padding: 4px 6px; font-size: 11px;" onclick="app.openLocationEditModal('${item.code}')" title="ปรับยอด 3 คลัง (เฉพาะ Owner)">
                                 ✏️ คลัง
                             </button>
+                            <button class="btn btn-outline" style="padding: 4px 6px; font-size: 11px; color: #3b82f6; border-color: rgba(59, 130, 246, 0.4);" onclick="app.printSingleBarcodeLabel('${item.code}')" title="สั่งพิมพ์ป้ายบาร์โค้ดพัสดุรายการนี้พอดีป้าย">
+                                🏷️ ป้าย
+                            </button>
                         </div>
                     </td>
                 </tr>
@@ -1946,23 +1949,52 @@ class WarehouseApp {
         link.click();
     }
 
-    renderBarcodeLabels() {
-        const items = this.db.getItems();
+    renderBarcodeLabels(searchQuery = "") {
+        let items = this.db.getItems();
         const container = document.getElementById("barcodeLabelsContainer");
+        const selectEl = document.getElementById("selectBarcodeItem");
         if (!container) return;
+
+        if (selectEl && selectEl.children.length <= 1) {
+            const optionsHtml = items.map(i => `<option value="${i.code}">[${i.code}] ${i.name}</option>`).join("");
+            selectEl.innerHTML = `<option value="all">📦 แสดงป้ายบาร์โค้ดทุกรายการ (${items.length} รายการ)</option>` + optionsHtml;
+        }
+
+        if (this.selectedBarcodeCode && this.selectedBarcodeCode !== "all") {
+            items = items.filter(i => i.code === this.selectedBarcodeCode);
+        } else if (searchQuery) {
+            const q = searchQuery.toLowerCase().trim();
+            items = items.filter(i => (i.code && i.code.toLowerCase().includes(q)) || (i.name && i.name.toLowerCase().includes(q)));
+        }
+
+        if (items.length === 0) {
+            container.innerHTML = `
+                <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-secondary); background: rgba(0,0,0,0.1); border-radius: var(--radius-md);">
+                    ⚠️ ไม่พบรายการบาร์โค้ดที่ตรงกับคำค้นหา
+                </div>
+            `;
+            return;
+        }
 
         container.innerHTML = items.map((item, idx) => {
             const notice = this.getItemNotice(item);
-            const noticeHtml = notice ? `<div style="font-size: 11px; color: #f97316; font-weight: 700; margin-top: 2px;">⚠️ ${notice}</div>` : "";
+            const noticeHtml = notice ? `<div style="font-size: 10px; color: #f97316; font-weight: 700; margin-top: 2px;">⚠️ ${notice}</div>` : "";
 
             return `
                 <div class="barcode-label-item">
-                    <div style="font-size: 11px; font-weight: 700; color: #3b82f6;">ลำดับที่ ${idx + 1}</div>
-                    <h4>${item.name}</h4>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="font-size: 10px; font-weight: 700; color: #3b82f6;">ลำดับ ${idx + 1}</span>
+                        <button class="btn btn-outline" style="padding: 2px 8px; font-size: 10px; font-weight: 700; color: #3b82f6; border-color: #3b82f6;" onclick="event.stopPropagation(); app.printSingleBarcodeLabel('${item.code}')" title="สั่งพิมพ์เฉพาะป้ายพัสดุรายการนี้พอดีป้าย">
+                            🖨️ พิมพ์ป้ายนี้
+                        </button>
+                    </div>
+                    <h4 style="font-size: 12px; font-weight: 700; line-height: 1.2; height: 32px; overflow: hidden; margin: 4px 0;">${item.name}</h4>
                     ${noticeHtml}
-                    <svg id="barcode-svg-${item.code}"></svg>
-                    <div style="font-family: monospace; font-size: 13px; font-weight: 700; margin-top: 4px;">${item.code}</div>
-                    <div style="font-size: 11px; color: #64748b; margin-top: 2px;">มาตรฐาน: ${item.standard} ${item.unit}</div>
+                    <div style="display: flex; justify-content: center; margin: 4px 0;">
+                        <svg id="barcode-svg-${item.code}"></svg>
+                    </div>
+                    <div style="font-family: monospace; font-size: 13px; font-weight: 700; text-align: center;">${item.code}</div>
+                    <div style="font-size: 11px; color: #64748b; margin-top: 2px; text-align: center;">เกณฑ์มาตรฐาน: ${item.standard} ${item.unit}</div>
                 </div>
             `;
         }).join("");
@@ -1973,13 +2005,143 @@ class WarehouseApp {
                 try {
                     JsBarcode(svgEl, item.code, {
                         format: "CODE128",
-                        width: 1.5,
-                        height: 40,
+                        width: 1.6,
+                        height: 38,
                         displayValue: false
                     });
                 } catch(e) {}
             }
         });
+    }
+
+    handleSelectBarcodeItem(code) {
+        this.selectedBarcodeCode = code;
+        this.renderBarcodeLabels();
+    }
+
+    printSingleBarcodeLabel(code) {
+        if (!code) return;
+        const item = this.db.getItemByCode(code);
+        if (!item) {
+            alert("⚠️ ไม่พบรหัสพัสดุสำหรับพิมพ์บาร์โค้ด");
+            return;
+        }
+
+        const notice = this.getItemNotice(item);
+        const noticeHtml = notice ? `<div style="font-size: 10px; color: #ea580c; font-weight: bold; margin-top: 2px;">⚠️ ${notice}</div>` : "";
+
+        const printWin = window.open("", "_blank", "width=650,height=480");
+        if (!printWin) {
+            alert("⚠️ กรุณาอนุญาต Pop-up window ในเบราว์เซอร์เพื่อพิมพ์ป้ายบาร์โค้ด");
+            return;
+        }
+
+        const printHtml = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>ป้ายบาร์โค้ดพัสดุ - [${item.code}] ${item.name}</title>
+                <style>
+                    @page {
+                        size: 80mm 50mm;
+                        margin: 0;
+                    }
+                    body {
+                        font-family: 'Sarabun', sans-serif;
+                        margin: 0;
+                        padding: 0;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        min-height: 100vh;
+                        background: #ffffff;
+                        color: #000000;
+                    }
+                    .label-card {
+                        width: 76mm;
+                        height: 46mm;
+                        border: 2px solid #000000;
+                        border-radius: 6px;
+                        padding: 6px;
+                        box-sizing: border-box;
+                        text-align: center;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: space-between;
+                        align-items: center;
+                        background: #ffffff;
+                    }
+                    .header-org {
+                        font-size: 10px;
+                        font-weight: bold;
+                        color: #1e293b;
+                        border-bottom: 1px solid #cbd5e1;
+                        width: 100%;
+                        padding-bottom: 2px;
+                    }
+                    .item-title {
+                        font-size: 11px;
+                        font-weight: bold;
+                        margin: 3px 0;
+                        line-height: 1.25;
+                        max-height: 28px;
+                        overflow: hidden;
+                    }
+                    .barcode-svg-container {
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        margin: 2px 0;
+                    }
+                    .code-display {
+                        font-family: monospace;
+                        font-size: 14px;
+                        font-weight: bold;
+                        letter-spacing: 1px;
+                    }
+                    .footer-std {
+                        font-size: 10px;
+                        color: #334155;
+                        font-weight: bold;
+                    }
+                </style>
+                <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+            </head>
+            <body>
+                <div class="label-card">
+                    <div class="header-org">⚡ การไฟฟ้าส่วนภูมิภาค | ผปบ.กฟส.ขก.2</div>
+                    <div class="item-title">${item.name}</div>
+                    ${noticeHtml}
+                    <div class="barcode-svg-container">
+                        <svg id="barcode-single-svg"></svg>
+                    </div>
+                    <div class="code-display">${item.code}</div>
+                    <div class="footer-std">เกณฑ์มาตรฐาน: ${item.standard} ${item.unit}</div>
+                </div>
+                <script>
+                    window.onload = function() {
+                        if (typeof JsBarcode !== 'undefined') {
+                            JsBarcode("#barcode-single-svg", "${item.code}", {
+                                format: "CODE128",
+                                width: 1.8,
+                                height: 38,
+                                displayValue: false
+                            });
+                        }
+                        setTimeout(function() {
+                            window.print();
+                            window.close();
+                        }, 350);
+                    };
+                </script>
+            </body>
+            </html>
+        `;
+
+        printWin.document.open();
+        printWin.document.write(printHtml);
+        printWin.document.close();
     }
 
     exportReorderReport() {
