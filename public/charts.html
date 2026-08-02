@@ -201,6 +201,48 @@
                 </div>
             </div>
 
+            <!-- Transaction History Log Table (Linked with Chart 5 Trends) -->
+            <div class="table-card" style="margin-bottom: 24px;">
+                <div class="table-header" style="flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <h3 style="font-size: 16px; font-weight: 700;" id="titleLogsTable">📜 ประวัติการเบิกจ่าย รับเข้า และตรวจนับพัสดุย้อนหลัง ทุกรายการ</h3>
+                        <p style="font-size: 12px; color: var(--text-secondary);" id="subtitleLogsTable">แสดงรายการเคลื่อนไหวทั้งหมดที่เชื่อมโยงกับกราฟแนวโน้มและฐานข้อมูลระบบ</p>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <input type="text" id="inputLogsSearch" class="search-input" style="width: 220px; padding: 6px 12px; font-size: 12px;" placeholder="🔍 ค้นหาประวัติ (ชื่อ/รหัส/ผู้เบิก)..." oninput="chartsPage.handleLogsSearchInput(this.value)">
+                        <select id="selectLogsType" class="search-input" style="width: auto; padding: 6px 12px; font-size: 12px; font-weight: 600;" onchange="chartsPage.setLogsTypeFilter(this.value)">
+                            <option value="all">⚡ ทุกประเภทรายการ</option>
+                            <option value="out">🔴 เบิกจ่ายออก (Dispense)</option>
+                            <option value="in">🟢 รับเข้าเติมสต็อก (Receive)</option>
+                            <option value="audit">🔵 ตรวจนับสต็อก (Audit)</option>
+                        </select>
+                        <button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; font-weight: 600;" onclick="chartsPage.exportLogsExcelReport()" title="ส่งออกประวัติการเคลื่อนไหวเป็นไฟล์ Excel">
+                            📊 โหลดประวัติเป็น Excel
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+                    <table class="data-table" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px; text-align: center;">ลำดับ</th>
+                                <th style="width: 140px; text-align: center;">วัน-เวลา</th>
+                                <th style="width: 110px; text-align: center;">ประเภท</th>
+                                <th style="width: 110px; text-align: center;">รหัสพัสดุ</th>
+                                <th>ชื่อรายการพัสดุ</th>
+                                <th style="width: 100px; text-align: center;">จำนวน</th>
+                                <th style="width: 140px;">ผู้ทำรายการ</th>
+                                <th style="width: 110px;">เลขที่สั่งงาน</th>
+                                <th style="width: 120px;">หมายเหตุ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="chartsLogsTableBody">
+                            <!-- Dynamic Transaction Log Rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- Chart 3: Full Item Stock vs Standard Bar Chart (with Pagination) -->
             <div class="chart-card">
                 <div class="chart-header" style="flex-wrap: wrap; gap: 12px;">
