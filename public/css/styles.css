@@ -1162,7 +1162,7 @@ body {
     height: 100% !important;
     max-width: 100% !important;
     max-height: 100% !important;
-    object-fit: fill !important;
+    object-fit: cover !important;
     object-position: center !important;
     display: block !important;
     margin: 0 !important;

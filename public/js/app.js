@@ -152,10 +152,9 @@ class WarehouseApp {
     renderItemThumbnailHtml(item) {
         if (!item) return "";
         if (item.imageUrl) {
-            const safeUrl = encodeURI(item.imageUrl);
             return `
-                <div class="item-thumb-container" onclick="event.stopPropagation(); app.openImageViewerModal('${safeUrl.replace(/'/g, "\\'")}', '[${item.code}] ${item.name.replace(/'/g, "\\'")}')" title="คลิกเพื่อขยายรูปภาพพัสดุ">
-                    <img src="${safeUrl}" class="item-thumb-img" alt="${item.name}" style="width: 100%; height: 100%; object-fit: fill; display: block;" loading="lazy" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\"item-thumb-placeholder\">📷</span>';">
+                <div class="item-thumb-container" onclick="event.stopPropagation(); app.openImageViewerModalByCode('${item.code}')" title="คลิกเพื่อขยายรูปภาพพัสดุ">
+                    <img src="${item.imageUrl}" class="item-thumb-img" alt="${item.name}" style="width: 100%; height: 100%; object-fit: cover; display: block; border-radius: inherit;" loading="lazy" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'44\\' height=\\'44\\' viewBox=\\'0 0 44 44\\'><rect width=\\'44\\' height=\\'44\\' fill=\\'%231e293b\\'/><text x=\\'22\\' y=\\'28\\' font-size=\\'20\\' text-anchor=\\'middle\\'>📷</text></svg>';">
                 </div>
             `;
         }
@@ -164,6 +163,18 @@ class WarehouseApp {
                 <span class="item-thumb-placeholder">📷</span>
             </div>
         `;
+    }
+
+    openImageViewerModalByCode(code) {
+        const item = this.db.getItemByCode(code);
+        if (item) {
+            this.selectedItemForModal = item;
+            if (item.imageUrl) {
+                this.openImageViewerModal(item.imageUrl, `[${item.code}] ${item.name}`);
+            } else {
+                this.openTransactionModal(item, "dispense");
+            }
+        }
     }
 
     openImageViewerModal(imageUrl, caption = "") {
@@ -246,8 +257,8 @@ class WarehouseApp {
 
                     const container = document.getElementById("modalItemImageContainer");
                     if (container) {
-                        container.innerHTML = `<img src="${compressedBase64}" class="item-thumb-img" alt="${this.selectedItemForModal.name}" style="width: 100%; height: 100%; object-fit: fill; border-radius: 8px;">`;
-                        container.onclick = () => this.openImageViewerModal(compressedBase64, `[${itemCode}] ${this.selectedItemForModal.name}`);
+                        container.innerHTML = `<img src="${compressedBase64}" class="item-thumb-img" alt="${this.selectedItemForModal.name}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">`;
+                        container.onclick = () => this.openImageViewerModalByCode(itemCode);
                     }
 
                     alert(`✅ อัปเดตและปรับรูปถ่ายใหม่ของพัสดุ [${this.selectedItemForModal.name}] ให้แสดงผลเต็มกรอบ 100% เรียบร้อยแล้ว!`);
@@ -696,12 +707,11 @@ class WarehouseApp {
         const modalImgContainer = document.getElementById("modalItemImageContainer");
         if (modalImgContainer) {
             if (item.imageUrl) {
-                const safeUrl = encodeURI(item.imageUrl);
-                modalImgContainer.innerHTML = `<img src="${safeUrl}" class="item-thumb-img" alt="${item.name}" style="width: 100%; height: 100%; object-fit: fill; display: block;" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\"item-thumb-placeholder\">📷</span>';">`;
-                modalImgContainer.onclick = () => this.openImageViewerModal(safeUrl, `[${item.code}] ${item.name}`);
+                modalImgContainer.innerHTML = `<img src="${item.imageUrl}" class="item-thumb-img" alt="${item.name}" style="width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 8px;" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'72\\' height=\\'72\\' viewBox=\\'0 0 72 72\\'><rect width=\\'72\\' height=\\'72\\' fill=\\'%231e293b\\'/><text x=\\'36\\' y=\\'44\\' font-size=\\'32\\' text-anchor=\\'middle\\'>📷</text></svg>';">`;
+                modalImgContainer.onclick = () => this.openImageViewerModalByCode(item.code);
             } else {
                 modalImgContainer.innerHTML = `<span class="item-thumb-placeholder">📷</span>`;
-                modalImgContainer.onclick = () => this.triggerItemPhotoUpload();
+                modalImgContainer.onclick = () => this.triggerItemPhotoUpload(item.code);
             }
         }
 
