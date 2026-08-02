@@ -1025,7 +1025,56 @@ body {
 
 @media (max-width: 480px) {
     .stats-grid {
-        grid-template-columns: 1fr !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 6px !important;
+    }
+
+    .stat-card {
+        padding: 8px 10px !important;
+    }
+
+    .stat-value {
+        font-size: 18px !important;
+    }
+}
+
+@media (max-width: 640px) {
+    .barcode-labels-grid {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
+        gap: 10px !important;
+    }
+    
+    .barcode-label-item {
+        padding: 10px 8px !important;
+    }
+
+    .barcode-label-item h4 {
+        font-size: 11px !important;
+        height: 32px !important;
+    }
+
+    .scan-banner {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 14px !important;
+        padding: 18px 16px !important;
+    }
+
+    .scan-banner-info h2 {
+        font-size: 18px !important;
+    }
+
+    .scan-banner .btn {
+        width: 100% !important;
+    }
+
+    .settings-card {
+        padding: 16px 14px !important;
+    }
+
+    .settings-card .btn {
+        width: 100% !important;
+        margin-bottom: 8px !important;
     }
 }
 
