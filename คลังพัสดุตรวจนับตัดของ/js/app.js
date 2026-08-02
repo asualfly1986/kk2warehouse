@@ -31,15 +31,17 @@ class WarehouseApp {
 
         this.initUI();
         this.initKeyboardScanner();
-        this.renderDashboard();
-        this.initCloudflareSync();
+        this.initCloudflareSync(true).then(() => {
+            this.renderDashboard();
+            this.renderHistoryTable();
+        });
 
         // Real-Time Polling Sync across devices every 2 seconds & on focus/visibility change
         setInterval(() => this.initCloudflareSync(), 2000);
         document.addEventListener("visibilitychange", () => {
-            if (!document.hidden) this.initCloudflareSync();
+            if (!document.hidden) this.initCloudflareSync(true);
         });
-        window.addEventListener("focus", () => this.initCloudflareSync());
+        window.addEventListener("focus", () => this.initCloudflareSync(true));
     }
 
     async initCloudflareSync(force = false) {
