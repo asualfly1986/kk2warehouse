@@ -2207,7 +2207,7 @@ class WarehouseApp {
       <th>หมายเหตุเฉพาะ</th>
       <th>สถานะ</th>
       <th>% คงเหลือ</th>
-      <th>ยอดมาตรฐาน</th>
+      <th style="background-color: #d9f99d !important; color: #365314 !important; font-weight: bold; border: 1px solid #a3e635;">ยอดมาตรฐาน</th>
       <th>คงเหลือจริง(storage location 2601)</th>
       <th>คงเหลือใน MB52</th>
       <th>คงเหลือใน WMS</th>
@@ -2286,7 +2286,7 @@ class WarehouseApp {
       <td class="center">${notice}</td>
       <td class="center" style="color: ${statusTextColor}; background-color: ${statusBgColor}; font-weight: bold;">${statusLabel}</td>
       <td class="center" style="font-weight: bold; color: ${statusTextColor};">${status.pct}%</td>
-      <td class="right">${i.standard}</td>
+      <td class="right" style="background-color: #f7fee7 !important; color: #365314 !important; font-weight: bold; mso-number-format:'\\#\\,\\#\\#0';">${i.standard}</td>
       <td class="right" style="font-weight: bold;">${i.currentQty}</td>
       <td class="right">${i.mb52Qty || 0}</td>
       <td class="right">${i.wmsQty || 0}</td>
@@ -2421,7 +2421,7 @@ class WarehouseApp {
                     <td style="mso-number-format:'\\@'; text-align: center; font-weight: bold;">${code}</td>
                     <td>${name}</td>
                     <td style="text-align: center;">${unit}</td>
-                    <td style="background-color: #d1fae5 !important; color: #065f46 !important; font-weight: bold; text-align: right; mso-number-format:'\\#\\,\\#\\#0';">${std}</td>
+                    <td style="background-color: #f7fee7 !important; color: #365314 !important; font-weight: bold; text-align: right; mso-number-format:'\\#\\,\\#\\#0';">${std}</td>
                     <td style="mso-number-format:'\\#\\,\\#\\#0'; text-align: right;">${cur}</td>
                     <td style="mso-number-format:'\\#\\,\\#\\#0'; text-align: right;">${mb52}</td>
                     <td style="mso-number-format:'\\#\\,\\#\\#0'; text-align: right;">${wms}</td>
@@ -2452,7 +2452,7 @@ class WarehouseApp {
                 table { border-collapse: collapse; width: 100%; font-family: 'Sarabun', 'Tahoma', sans-serif; font-size: 11pt; }
                 th { background-color: #1e293b; color: #ffffff; font-weight: bold; border: 0.5pt solid #94a3b8; padding: 6px 10px; text-align: center; }
                 td { border: 0.5pt solid #cbd5e1; padding: 5px 8px; vertical-align: middle; }
-                th.std-header { background-color: #10b981 !important; color: #ffffff !important; font-weight: bold; text-align: center; }
+                th.std-header { background-color: #d9f99d !important; color: #365314 !important; font-weight: bold; text-align: center; border: 0.5pt solid #a3e635; }
             </style>
             </head>
             <body>

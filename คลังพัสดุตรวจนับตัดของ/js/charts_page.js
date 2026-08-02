@@ -1257,7 +1257,7 @@ class ChartsPageController {
                     <td>${i.name}</td>
                     <td style="text-align: center;">${status.label}</td>
                     <td style="text-align: center; font-weight: bold;">${status.pct}%</td>
-                    <td style="text-align: right; background-color: #ecfdf5; font-weight: bold;">${std}</td>
+                    <td style="text-align: right; background-color: #f7fee7 !important; color: #365314 !important; font-weight: bold; mso-number-format:'\\#\\,\\#\\#0';">${std}</td>
                     <td style="text-align: right; font-weight: bold;">${current}</td>
                     <td style="text-align: right;">${mb}</td>
                     <td style="text-align: right;">${wm}</td>
@@ -1276,6 +1276,7 @@ class ChartsPageController {
             <style>
                 table { border-collapse: collapse; width: 100%; font-family: 'Sarabun', sans-serif; font-size: 11pt; }
                 th { background-color: #1e293b; color: #ffffff; font-weight: bold; border: 0.5pt solid #94a3b8; padding: 8px; text-align: center; }
+                th.std-header { background-color: #d9f99d !important; color: #365314 !important; font-weight: bold; border: 0.5pt solid #a3e635; text-align: center; }
                 td { border: 0.5pt solid #cbd5e1; padding: 6px; vertical-align: middle; }
             </style>
             </head>
@@ -1289,7 +1290,7 @@ class ChartsPageController {
                         <th>รายการพัสดุ</th>
                         <th>สถานะ</th>
                         <th>% สัดส่วน</th>
-                        <th>เกณฑ์มาตรฐาน</th>
+                        <th class="std-header">เกณฑ์มาตรฐาน</th>
                         <th>คงเหลือจริง (2601)</th>
                         <th>คงเหลือ MB52</th>
                         <th>คงเหลือ WMS</th>
