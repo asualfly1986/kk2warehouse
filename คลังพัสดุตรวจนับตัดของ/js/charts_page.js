@@ -421,6 +421,110 @@ class ChartsPageController {
             </div>
         `;
     }
+
+    renderStockTable() {
+        const tbody = document.getElementById("chartsTableBody");
+        if (!tbody) return;
+
+        let items = this.db.getItems();
+
+        // Apply Category Filter
+        if (this.selectedCategory && this.selectedCategory !== "all") {
+            items = items.filter(i => i.category === this.selectedCategory);
+        }
+
+        // Apply Search Query Filter
+        if (this.searchQuery) {
+            const q = this.searchQuery.toLowerCase().trim();
+            items = items.filter(i => 
+                (i.code && i.code.toLowerCase().includes(q)) || 
+                (i.name && i.name.toLowerCase().includes(q)) ||
+                (i.category && i.category.toLowerCase().includes(q))
+            );
+        }
+
+        if (items.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="12" style="text-align: center; padding: 32px; color: var(--text-secondary);">
+                        🔍 ไม่พบรายการพัสดุที่ตรงตามคำค้นหา "${this.searchQuery}"
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = items.map((i, index) => {
+            const status = window.getItemStatus(i.currentQty, i.standard);
+            const mb = Number(i.mb52Qty || 0);
+            const wm = Number(i.wmsQty || 0);
+            const diff = wm - mb;
+            const diffText = diff === 0 ? "0 (เท่ากัน)" : (diff > 0 ? `+${diff}` : `${diff}`);
+            const diffColor = diff === 0 ? '#10b981' : (diff > 0 ? '#3b82f6' : '#ef4444');
+
+            const thumbHtml = i.imageUrl 
+                ? `<div class="item-thumb-container" style="width: 38px; height: 38px;" title="รูปภาพพัสดุ"><img src="${i.imageUrl}" class="item-thumb-img" alt="${i.name}"></div>`
+                : `<div class="item-thumb-container" style="width: 38px; height: 38px; font-size: 18px;" title="ไม่มีรูปถ่าย">📦</div>`;
+
+            let colorStyle = '#34d399';
+            if (status.key === 'out_of_stock') colorStyle = '#ef4444';
+            else if (status.key === 'low') colorStyle = '#f97316';
+            else if (status.key === 'normal') colorStyle = '#a3e635';
+            else if (status.key === 'good') colorStyle = '#34d399';
+            else if (status.key === 'full') colorStyle = '#059669';
+            else if (status.key === 'over') colorStyle = '#3b82f6';
+
+            return `
+                <tr>
+                    <td style="font-weight: 700; color: var(--accent-primary); text-align: center;">${index + 1}</td>
+                    <td style="text-align: center;">${thumbHtml}</td>
+                    <td style="text-align: center;"><code style="font-family: monospace; color: var(--accent-primary); font-weight: 700;">${i.code}</code></td>
+                    <td style="font-weight: 600;">
+                        ${i.name}
+                        ${i.specialNotice ? `<span style="font-size: 11px; color: #ef4444; margin-left: 6px;">⚠️ ${i.specialNotice}</span>` : ''}
+                    </td>
+                    <td style="text-align: center;"><span class="badge ${status.badgeClass}">${status.label}</span></td>
+                    <td style="background: rgba(16, 185, 129, 0.15) !important; color: #34d399 !important; font-weight: 700; text-align: center;">${i.standard} ${i.unit}</td>
+                    <td style="font-weight: 700; color: ${colorStyle}; text-align: center;">${i.currentQty} ${i.unit}</td>
+                    <td style="text-align: center; font-weight: 600;">${mb} ${i.unit}</td>
+                    <td style="text-align: center; font-weight: 600;">${wm} ${i.unit}</td>
+                    <td style="text-align: center; font-weight: 700; color: ${diffColor};">${diffText}</td>
+                    <td style="text-align: center; font-weight: 600;">${i.kk23Qty || 0} ${i.unit}</td>
+                    <td style="font-weight: 700; color: ${colorStyle}; text-align: center;">${status.pct}%</td>
+                </tr>
+            `;
+        }).join("");
+    }
+
+    renderCategoryPills() {
+        const container = document.getElementById("chartsCategoryPills");
+        if (!container) return;
+
+        const items = this.db.getItems();
+        const categories = ["all", ...new Set(items.map(i => i.category).filter(Boolean))];
+
+        container.innerHTML = categories.map(cat => {
+            const count = cat === "all" ? items.length : items.filter(i => i.category === cat).length;
+            const label = cat === "all" ? "📦 ทั้งหมดทุกหมวด" : cat;
+            const activeClass = this.selectedCategory === cat ? "active" : "";
+            return `
+                <div class="filter-pill ${activeClass}" onclick="chartsPage.setCategoryFilter('${cat}')">
+                    ${label} (${count})
+                </div>
+            `;
+        }).join("");
+    }
+
+    setCategoryFilter(category) {
+        this.selectedCategory = category;
+        this.renderCategoryPills();
+        this.renderStockTable();
+    }
+
+    handleSearchInput(query) {
+        this.searchQuery = query;
+        this.renderStockTable();
+    }
 }
 
 // Initialize Global Controller
