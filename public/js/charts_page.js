@@ -141,7 +141,7 @@ class ChartsPageController {
             }
         });
 
-        // 🟢 REAL-TIME SYNC 2: Polling Cloudflare D1 every 8 seconds for multi-device sync
+        // 🟢 REAL-TIME SYNC 2: Polling Cloudflare D1 every 3 seconds for multi-device sync
         setInterval(() => {
             if (typeof this.db.syncFromCloudflare === "function") {
                 this.db.syncFromCloudflare().then(updated => {
@@ -150,7 +150,7 @@ class ChartsPageController {
                     }
                 });
             }
-        }, 8000);
+        }, 3000);
 
         // 🟢 REAL-TIME SYNC 3: Sync when tab gains focus
         window.addEventListener('focus', () => {

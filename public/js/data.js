@@ -330,9 +330,10 @@ class StockDatabase {
         try {
             const baseUrl = this.getApiBaseUrl();
             let hasChanges = false;
+            const cacheBust = `t=${Date.now()}`;
 
             // 1. Sync Inventory Items Stock
-            const res = await fetch(`${baseUrl}/api/inventory`);
+            const res = await fetch(`${baseUrl}/api/inventory?${cacheBust}`);
             if (res.ok) {
                 const dbItems = await res.json();
                 if (dbItems && Array.isArray(dbItems) && dbItems.length > 0) {
@@ -360,6 +361,10 @@ class StockDatabase {
                                 localItem.kk23Qty = Number(dbItem.kk23Qty);
                                 updated = true;
                             }
+                            if (dbItem.imageUrl && localItem.imageUrl !== dbItem.imageUrl) {
+                                localItem.imageUrl = dbItem.imageUrl;
+                                updated = true;
+                            }
                         }
                     });
 
@@ -381,7 +386,7 @@ class StockDatabase {
             }
 
             // 2. Sync Transaction History Logs
-            const logsRes = await fetch(`${baseUrl}/api/logs`);
+            const logsRes = await fetch(`${baseUrl}/api/logs?${cacheBust}`);
             if (logsRes.ok) {
                 const dbLogs = await logsRes.json();
                 if (dbLogs && Array.isArray(dbLogs) && dbLogs.length > 0) {
