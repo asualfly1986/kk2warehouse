@@ -125,15 +125,15 @@
             <div class="chart-card">
                 <div class="chart-header" style="flex-wrap: wrap; gap: 8px;">
                     <div>
-                        <h3 style="font-size: 16px; font-weight: 700;">🍩 แผนภูมิสัดส่วนสถานะพัสดุ (Stock Status Distribution)</h3>
-                        <p style="font-size: 12px; color: var(--text-secondary);">แบ่งตามเกณฑ์ 6 ระดับ (เกิน, เต็ม, ดี, พอดี, เตือน, จัดซื้อ)</p>
+                        <h3 style="font-size: 16px; font-weight: 700;">🍩 แผนภูมิสัดส่วนสถานะพัสดุ (Stock Status)</h3>
+                        <p style="font-size: 12px; color: var(--text-secondary);">💡 คลิกชิ้นส่วนกราฟเพื่อเลือกกรองกราฟคลังและข้อมูลพัสดุ</p>
                     </div>
                     <button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; font-weight: 600;" onclick="chartsPage.downloadChartAsImage('chartStatusDoughnut', 'แผนภูมิสัดส่วนสถานะพัสดุ.png')" title="เซฟเป็นไฟล์รูปภาพ PNG สำหรับนำเสนอในการประชุม">
                         🖼️ เซฟรูปภาพ (PNG)
                     </button>
                 </div>
                 <div class="chart-wrapper" style="height: 300px;">
-                    <canvas id="chartStatusDoughnut"></canvas>
+                    <canvas id="chartStatusDoughnut" style="cursor: pointer;"></canvas>
                 </div>
             </div>
 
@@ -141,12 +141,15 @@
             <div class="chart-card">
                 <div class="chart-header" style="flex-wrap: wrap; gap: 8px;">
                     <div>
-                        <h3 style="font-size: 16px; font-weight: 700;">🏢 ยอดรวมจำนวนพัสดุสะสมแยกตามคลัง</h3>
-                        <p style="font-size: 12px; color: var(--text-secondary);">เปรียบเทียบยอดรวมทั้งหมดใน 2601, MB52, WMS และ sloc 0023</p>
+                        <h3 style="font-size: 16px; font-weight: 700;" id="titleChartLocations">🏢 ยอดรวมจำนวนพัสดุสะสมแยกตามคลัง</h3>
+                        <p style="font-size: 12px; color: var(--text-secondary);" id="subtitleChartLocations">เปรียบเทียบยอดรวมทั้งหมดใน 2601, MB52, WMS และ sloc 0023</p>
                     </div>
-                    <button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; font-weight: 600;" onclick="chartsPage.downloadChartAsImage('chartLocationsBar', 'กราฟยอดรวมพัสดุสะสมแยกตามคลัง.png')" title="เซฟเป็นไฟล์รูปภาพ PNG สำหรับนำเสนอในการประชุม">
-                        🖼️ เซฟรูปภาพ (PNG)
-                    </button>
+                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;" id="containerChartLocationsActions">
+                        <div id="filterPillChartLocations"></div>
+                        <button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; font-weight: 600;" onclick="chartsPage.downloadChartAsImage('chartLocationsBar', 'กราฟยอดรวมพัสดุสะสมแยกตามคลัง.png')" title="เซฟเป็นไฟล์รูปภาพ PNG สำหรับนำเสนอในการประชุม">
+                            🖼️ เซฟรูปภาพ (PNG)
+                        </button>
+                    </div>
                 </div>
                 <div class="chart-wrapper" style="height: 300px;">
                     <canvas id="chartLocationsBar"></canvas>

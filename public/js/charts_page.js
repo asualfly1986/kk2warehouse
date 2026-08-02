@@ -116,20 +116,88 @@ class ChartsPageController {
                     backgroundColor: ["#3b82f6", "#059669", "#34d399", "#a3e635", "#f97316", "#ef4444"],
                     borderWidth: 2,
                     borderColor: "#1e293b",
-                    hoverOffset: 8
+                    hoverOffset: 12
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                onClick: (event, activeElements) => {
+                    if (activeElements && activeElements.length > 0) {
+                        const idx = activeElements[0].index;
+                        const statusKeys = ["over", "full", "good", "normal", "low", "out_of_stock"];
+                        const selectedKey = statusKeys[idx];
+                        this.handleDoughnutSliceClick(selectedKey);
+                    }
+                },
                 plugins: {
                     legend: {
                         position: "bottom",
                         labels: { color: "#94a3b8", font: { family: "Sarabun", size: 11 }, padding: 10 }
+                    },
+                    tooltip: {
+                        titleFont: { family: "Sarabun", size: 13, weight: "bold" },
+                        bodyFont: { family: "Sarabun", size: 12 },
+                        callbacks: {
+                            afterLabel: () => "💡 คลิกชิ้นส่วนนี้เพื่อกรองยอดคลังและตารางข้อมูลทันที!"
+                        }
                     }
                 }
             }
         });
+    }
+
+    handleDoughnutSliceClick(statusKey) {
+        if (this.doughnutStatusFilter === statusKey || statusKey === null) {
+            this.doughnutStatusFilter = null;
+        } else {
+            this.doughnutStatusFilter = statusKey;
+        }
+
+        const statusMap = {
+            over: { label: "🔵 เกิน 100%", name: "สต็อกเกินมาตรฐาน" },
+            full: { label: "❇️ เต็ม 100%", name: "สต็อกเต็มเกณฑ์" },
+            good: { label: "🟢 ดี (81-99%)", name: "สต็อกอยู่ในเกณฑ์ดี" },
+            normal: { label: "🟡 พอดี (61-80%)", name: "สต็อกระดับพอดี" },
+            low: { label: "🟧 เตือน (50-60%)", name: "เตือนสต็อกต่ำ" },
+            out_of_stock: { label: "🔴 จัดซื้อ (<50%)", name: "ขาดสต็อกจัดซื้อด่วน" }
+        };
+
+        const allItems = this.db.getItems();
+        let targetItems = allItems;
+
+        const filterPillEl = document.getElementById("filterPillChartLocations");
+        const subtitleEl = document.getElementById("subtitleChartLocations");
+
+        if (this.doughnutStatusFilter) {
+            targetItems = allItems.filter(i => {
+                const status = window.getItemStatus(i.currentQty, i.standard);
+                return status.key === this.doughnutStatusFilter;
+            });
+
+            const statusInfo = statusMap[this.doughnutStatusFilter] || { label: this.doughnutStatusFilter };
+            
+            if (filterPillEl) {
+                filterPillEl.innerHTML = `
+                    <div style="background: rgba(59, 130, 246, 0.25); border: 1px solid #3b82f6; color: #60a5fa; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px; cursor: pointer;" onclick="chartsPage.handleDoughnutSliceClick(null)" title="คลิกเพื่อล้างตัวกรอง">
+                        <span>✨ กรองคลังตาม: ${statusInfo.label} (${targetItems.length} รายการ)</span>
+                        <span style="background: #ef4444; color: #ffffff; width: 16px; height: 16px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold;">✕</span>
+                    </div>
+                `;
+            }
+            if (subtitleEl) {
+                subtitleEl.textContent = `ยอดรวมใน 4 คลังเฉพาะกลุ่ม [${statusInfo.label}] (${targetItems.length} รายการ)`;
+            }
+        } else {
+            if (filterPillEl) filterPillEl.innerHTML = "";
+            if (subtitleEl) subtitleEl.textContent = "เปรียบเทียบยอดรวมทั้งหมดใน 2601, MB52, WMS และ sloc 0023";
+        }
+
+        // Re-render location bar chart, main bar chart, deficit chart, and table using filtered items!
+        this.renderLocationsChart(targetItems);
+        this.renderMainBarChart(targetItems);
+        this.renderTopDeficitChart(targetItems);
+        this.renderStockTable(targetItems);
     }
 
     renderLocationsChart(items) {
