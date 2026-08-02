@@ -172,11 +172,13 @@ class ChartsPageController {
             .filter(i => i.deficit > 0)
             .sort((a, b) => b.deficit - a.deficit);
 
-        // Smart multi-line text wrapping so EVERY single character of item names is displayed completely!
-        const wrapText = (str, maxLen = 28) => {
-            if (!str) return "";
-            if (str.length <= maxLen) return str;
-            const words = str.split(" ");
+        // Smart multi-line text wrapping with rank number prefix so EVERY name is crystal clear!
+        const wrapTextWithRank = (name, index, maxLen = 26) => {
+            if (!name) return "";
+            const prefixedName = `${index + 1}. ${name}`;
+            if (prefixedName.length <= maxLen) return prefixedName;
+            
+            const words = prefixedName.split(" ");
             const lines = [];
             let curr = "";
             words.forEach(w => {
@@ -191,19 +193,19 @@ class ChartsPageController {
             if (lines.length > 1) return lines;
             
             const result = [];
-            for (let i = 0; i < str.length; i += maxLen) {
-                result.push(str.slice(i, i + maxLen));
+            for (let i = 0; i < prefixedName.length; i += maxLen) {
+                result.push(prefixedName.slice(i, i + maxLen));
             }
             return result;
         };
 
-        // Dynamically adjust wrapper height based on multi-line text items
+        // Dynamically adjust wrapper height based on multi-line text items so NO names overlap!
         if (canvas.parentElement) {
-            const dynamicHeight = Math.max(380, deficitItems.length * 44);
+            const dynamicHeight = Math.max(450, deficitItems.length * 56);
             canvas.parentElement.style.height = `${dynamicHeight}px`;
         }
 
-        const labels = deficitItems.map(i => wrapText(i.name, 28));
+        const labels = deficitItems.map((i, idx) => wrapTextWithRank(i.name, idx, 26));
         const data = deficitItems.map(i => i.deficit);
 
         const ctx = canvas.getContext("2d");
@@ -226,8 +228,10 @@ class ChartsPageController {
                 maintainAspectRatio: false,
                 layout: {
                     padding: {
+                        top: 10,
+                        bottom: 15,
                         left: 10,
-                        right: 15
+                        right: 20
                     }
                 },
                 scales: {
@@ -237,9 +241,10 @@ class ChartsPageController {
                     },
                     y: {
                         ticks: { 
+                            autoSkip: false,
                             color: "#f8fafc", 
                             font: { family: "Sarabun", size: 11, weight: "bold" },
-                            padding: 6
+                            padding: 8
                         },
                         grid: { display: false }
                     }
