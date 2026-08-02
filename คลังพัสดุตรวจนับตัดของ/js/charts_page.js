@@ -147,7 +147,7 @@ class ChartsPageController {
                 try {
                     await this.db.syncFromCloudflare();
                 } catch(e) {}
-                this.refreshAllCharts();
+                this.refreshAllCharts(false);
             }
         }, 2000);
 
@@ -155,18 +155,19 @@ class ChartsPageController {
         window.addEventListener('focus', () => {
             if (typeof this.db.syncFromCloudflare === "function") {
                 this.db.syncFromCloudflare().then(() => {
-                    this.refreshAllCharts();
+                    this.refreshAllCharts(true);
                 });
             }
         });
     }
 
-    async refreshAllCharts() {
-        try {
-            if (typeof this.db.syncFromCloudflare === "function") {
-                await this.db.syncFromCloudflare();
-            }
-        } catch (err) {}
+    async refreshAllCharts(force = false) {
+        const currentDataHash = JSON.stringify(this.db.getItems()) + '_' + JSON.stringify(this.db.getLogs());
+        if (!force && this.lastDataHash && this.lastDataHash === currentDataHash) {
+            return; // 🛑 ข้อมูลไม่มีการเปลี่ยนแปลง หยุดการวาดกราฟซ้ำซ้อนเพื่อแก้ปัญหากราฟกระพริบถี่
+        }
+        this.lastDataHash = currentDataHash;
+
         this.updateLastUpdatedTimestamp();
         this.populateTrendItemDropdown();
         this.renderKpis();

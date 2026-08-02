@@ -42,12 +42,19 @@ class WarehouseApp {
         window.addEventListener("focus", () => this.initCloudflareSync());
     }
 
-    async initCloudflareSync() {
+    async initCloudflareSync(force = false) {
         try {
             await this.db.syncFromCloudflare();
         } catch (e) {
             console.log("Cloudflare sync notice:", e);
         }
+        
+        const currentDataHash = JSON.stringify(this.db.getItems()) + '_' + JSON.stringify(this.db.getLogs());
+        if (!force && this.lastDataHash && this.lastDataHash === currentDataHash) {
+            return; // 🛑 ข้อมูลไม่มีการเปลี่ยนแปลง หยุดการ re-render เพื่อแก้ปัญหาตารางกระพริบ
+        }
+        this.lastDataHash = currentDataHash;
+
         this.renderHistoryTable();
         if (this.activeTab === "dashboard") this.renderDashboard();
         if (this.activeTab === "stock") this.renderStockTable(document.getElementById("mainSearch")?.value || "");
