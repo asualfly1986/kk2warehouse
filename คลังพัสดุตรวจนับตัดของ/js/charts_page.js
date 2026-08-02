@@ -249,48 +249,33 @@ class ChartsPageController {
         });
     }
 
-    ensureHistoricalLogs() {
-        let logs = this.db.getLogs ? this.db.getLogs() : [];
-        if (!logs || logs.length < 15) {
-            const items = this.db.getItems();
-            const requesters = this.db.getRequesters ? this.db.getRequesters() : ["อานนท์ วรรณอมรกุล", "ฤทธิเกียรติ ทาขุลี", "อภิชาติ ยุพิน", "ทศพร คงวันดี"];
-            const generatedLogs = [];
-            const now = new Date();
-
-            // Generate realistic logs for the past 6 months (24 weeks)
-            for (let week = 24; week >= 0; week--) {
-                const numLogsThisWeek = Math.floor(Math.random() * 3) + 2;
-                for (let j = 0; j < numLogsThisWeek; j++) {
-                    const randomItem = items[Math.floor(Math.random() * items.length)];
-                    const isOutbound = Math.random() > 0.4;
-                    const type = isOutbound ? "out" : "in";
-                    const daysAgo = (week * 7) + Math.floor(Math.random() * 6);
-                    const logDate = new Date(now.getTime() - (daysAgo * 24 * 60 * 60 * 1000));
-                    const requester = requesters[Math.floor(Math.random() * requesters.length)];
-                    const woNum = "WO-69" + String(100 + Math.floor(Math.random() * 899));
-                    const qty = Math.floor(Math.random() * 10) + 1;
-
-                    generatedLogs.push({
-                        id: "LOG-" + logDate.getTime() + "-" + Math.floor(Math.random() * 1000),
-                        timestamp: logDate.toISOString(),
-                        type: type,
-                        code: randomItem.code,
-                        name: randomItem.name,
-                        qty: qty,
-                        unit: randomItem.unit || "ชิ้น",
-                        balanceBefore: randomItem.currentQty + (type === 'out' ? qty : -qty),
-                        balanceAfter: randomItem.currentQty,
-                        requester: requester,
-                        workOrder: woNum,
-                        note: type === 'out' ? "เบิกใช้ปฏิบัติงานตามแผนกุศลขอนแก่น 2" : "รับเข้าเติมสต็อกพัสดุจากคลังใหญ่"
-                    });
-                }
-            }
-
-            const merged = [...logs, ...generatedLogs];
-            merged.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-            this.db.saveLogs(merged);
+    resetLogsToFreshState() {
+        if (this.db && typeof this.db.saveLogs === "function") {
+            this.db.saveLogs([]);
+        } else {
+            localStorage.setItem("pea_warehouse_logs_v4", JSON.stringify([]));
         }
+    }
+
+    resetLogsWithPin() {
+        const pin = prompt("🔑 กรุณากรอก รหัสผ่าน PIN สำหรับรีเซ็ตประวัติเพื่อเริ่มป้อนข้อมูลใหม่:");
+        if (!pin) return;
+        if (pin.trim() !== "Aunkung") {
+            alert("❌ รหัสผ่าน PIN ไม่ถูกต้อง!");
+            return;
+        }
+
+        if (confirm("⚠️ คุณต้องการล้างประวัติรายการเบิก-รับ-ตรวจนับทั้งหมด เพื่อเซ็ตระบบรอรับการป้อนข้อมูลใหม่ใช่หรือไม่?")) {
+            this.resetLogsToFreshState();
+            this.renderAllCharts();
+            this.renderLogsTable();
+            alert("✅ เซ็ตค่าและล้างประวัติเรียบร้อยแล้ว! ระบบพร้อมรับการป้อนข้อมูลใหม่จาก https://kk2warehouse.asualfly1986.workers.dev/ แล้วครับ");
+        }
+    }
+
+    ensureHistoricalLogs() {
+        // Clear all previous test logs to ensure system is 100% clean and ready to receive fresh user inputs
+        this.resetLogsToFreshState();
     }
 
     populateTrendItemDropdown() {
@@ -380,9 +365,10 @@ class ChartsPageController {
         if (!logs || logs.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="9" style="text-align: center; padding: 30px; color: var(--text-secondary);">
-                        <div style="font-size: 32px; margin-bottom: 8px;">📭</div>
-                        <div>ไม่พบประวัติการเคลื่อนไหวพัสดุตรงตามเงื่อนไขที่เลือก</div>
+                    <td colspan="9" style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
+                        <div style="font-size: 40px; margin-bottom: 12px;">✨📭</div>
+                        <div style="font-size: 16px; font-weight: 700; color: #34d399; margin-bottom: 6px;">ระบบเซ็ตค่าและล้างประวัติรอรับการป้อนข้อมูลใหม่เรียบร้อยแล้ว</div>
+                        <div style="font-size: 13px; color: var(--text-secondary);">ยังไม่มีประวัติรายการเบิก/รับ/ตรวจนับในขณะนี้ สามารถเริ่มทำรายการใหม่ได้จากระบบหลัก <a href="index.html" style="color: var(--accent-primary); font-weight: 700; text-decoration: underline;">https://kk2warehouse.asualfly1986.workers.dev/</a></div>
                     </td>
                 </tr>
             `;

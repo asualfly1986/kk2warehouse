@@ -206,10 +206,10 @@
                 <div class="table-header" style="flex-wrap: wrap; gap: 12px;">
                     <div>
                         <h3 style="font-size: 16px; font-weight: 700;" id="titleLogsTable">📜 ประวัติการเบิกจ่าย รับเข้า และตรวจนับพัสดุย้อนหลัง ทุกรายการ</h3>
-                        <p style="font-size: 12px; color: var(--text-secondary);" id="subtitleLogsTable">แสดงรายการเคลื่อนไหวทั้งหมดที่เชื่อมโยงกับกราฟแนวโน้มและฐานข้อมูลระบบ</p>
+                        <p style="font-size: 12px; color: var(--text-secondary);" id="subtitleLogsTable">แสดงรายการเคลื่อนไหวทั้งหมดที่เชื่อมโยงกับระบบหลัก (https://kk2warehouse.asualfly1986.workers.dev/)</p>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                        <input type="text" id="inputLogsSearch" class="search-input" style="width: 220px; padding: 6px 12px; font-size: 12px;" placeholder="🔍 ค้นหาประวัติ (ชื่อ/รหัส/ผู้เบิก)..." oninput="chartsPage.handleLogsSearchInput(this.value)">
+                        <input type="text" id="inputLogsSearch" class="search-input" style="width: 190px; padding: 6px 12px; font-size: 12px;" placeholder="🔍 ค้นหาประวัติ..." oninput="chartsPage.handleLogsSearchInput(this.value)">
                         <select id="selectLogsType" class="search-input" style="width: auto; padding: 6px 12px; font-size: 12px; font-weight: 600;" onchange="chartsPage.setLogsTypeFilter(this.value)">
                             <option value="all">⚡ ทุกประเภทรายการ</option>
                             <option value="out">🔴 เบิกจ่ายออก (Dispense)</option>
@@ -218,6 +218,9 @@
                         </select>
                         <button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; font-weight: 600;" onclick="chartsPage.exportLogsExcelReport()" title="ส่งออกประวัติการเคลื่อนไหวเป็นไฟล์ Excel">
                             📊 โหลดประวัติเป็น Excel
+                        </button>
+                        <button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; font-weight: 600; color: #ef4444; border-color: rgba(239, 68, 68, 0.4);" onclick="chartsPage.resetLogsWithPin()" title="รีเซ็ตประวัติทั้งหมดเพื่อเริ่มป้อนข้อมูลใหม่">
+                            🗑️ รีเซ็ตประวัติรอข้อมูลใหม่
                         </button>
                     </div>
                 </div>
