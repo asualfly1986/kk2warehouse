@@ -157,6 +157,24 @@
                             <canvas id="stockStatusChart"></canvas>
                         </div>
                     </div>
+
+                    <!-- Chart 2: Bar Chart showing Items & Comparison -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div>
+                                <h3 style="font-size: 16px; font-weight: 700;">📊 กราฟแสดงรายการพัสดุ (คงเหลือจริง 2601 เทียบเกณฑ์มาตรฐาน)</h3>
+                                <p style="font-size: 12px; color: var(--text-secondary);">💡 เอาเมาส์ชี้ หรือคลิกที่แท่งกราฟเพื่อดูชื่อพัสดุเต็มและรายละเอียด</p>
+                            </div>
+                            <div id="barChartPageControls" style="display: flex; align-items: center; gap: 8px;">
+                                <!-- Dynamic Pagination Controls -->
+                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="stockComparisonChart"></canvas>
+                        </div>
+                        <!-- Full Item Name Preview Banner -->
+                        <div id="barChartItemPreview"></div>
+                    </div>
                 </div>
 
                 <!-- Quick Scan Banner -->

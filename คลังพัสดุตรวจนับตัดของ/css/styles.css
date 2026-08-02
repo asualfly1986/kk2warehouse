@@ -372,14 +372,10 @@ body {
 
 /* TOP CHARTS GRID POSITIONING */
 .top-charts-grid {
-    display: flex;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 24px;
     margin-bottom: 28px;
-}
-
-.top-charts-grid .chart-card {
-    max-width: 580px;
-    width: 100%;
 }
 
 .chart-card {
