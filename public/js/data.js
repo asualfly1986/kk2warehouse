@@ -385,11 +385,11 @@ class StockDatabase {
                 }
             }
 
-            // 2. Sync Transaction History Logs
+            // 2. Sync Transaction History Logs directly from D1 Database (Single Source of Truth)
             const logsRes = await fetch(`${baseUrl}/api/logs?${cacheBust}`);
             if (logsRes.ok) {
                 const dbLogs = await logsRes.json();
-                if (dbLogs && Array.isArray(dbLogs) && dbLogs.length > 0) {
+                if (Array.isArray(dbLogs)) {
                     const formattedLogs = dbLogs.map(l => ({
                         id: l.id || ("LOG-" + new Date(l.timestamp || Date.now()).getTime()),
                         timestamp: l.timestamp || new Date().toISOString(),
@@ -406,35 +406,10 @@ class StockDatabase {
                     }));
 
                     let existingLogs = this.getLogs();
-                    const mergedLogsMap = new Map();
-                    
-                    // Add existing local logs
-                    existingLogs.forEach(l => {
-                        const key = (l.timestamp || '') + '_' + (l.code || '') + '_' + (l.qty || 0);
-                        mergedLogsMap.set(key, l);
-                    });
-                    
-                    // Overwrite with Cloudflare D1 logs
-                    formattedLogs.forEach(l => {
-                        const key = (l.timestamp || '') + '_' + (l.code || '') + '_' + (l.qty || 0);
-                        mergedLogsMap.set(key, l);
-                    });
-
-                    const mergedArray = Array.from(mergedLogsMap.values());
-                    mergedArray.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-                    if (JSON.stringify(mergedArray) !== JSON.stringify(existingLogs)) {
-                        this.saveLogs(mergedArray);
+                    if (JSON.stringify(formattedLogs) !== JSON.stringify(existingLogs)) {
+                        this.saveLogs(formattedLogs);
                         hasChanges = true;
-                        console.log("☁️ Successfully synced transaction logs from Cloudflare D1!");
-                        
-                        if (window.app && typeof window.app.renderHistoryTable === 'function') {
-                            window.app.renderHistoryTable();
-                        }
-                        if (window.chartsPage && typeof window.chartsPage.renderLogsTable === 'function') {
-                            window.chartsPage.renderLogsTable();
-                            window.chartsPage.renderMonthlyTrendChart();
-                        }
+                        console.log("☁️ Successfully synced 100% strict logs from Cloudflare D1 Database!");
                     }
                 }
             }
