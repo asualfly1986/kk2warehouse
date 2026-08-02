@@ -569,23 +569,6 @@ class ChartsPageController {
                     else if (l.type === 'audit' || l.type === 'count') bucket.audit += qty;
                 }
             });
-
-            // Demo baseline pattern for weekly curves if no logs exist yet
-            let totalOut = buckets.reduce((acc, b) => acc + b.outbound, 0);
-            let totalIn = buckets.reduce((acc, b) => acc + b.inbound, 0);
-            let totalAudit = buckets.reduce((acc, b) => acc + b.audit, 0);
-            if (totalOut === 0 && totalIn === 0 && totalAudit === 0) {
-                const baseMultiplier = selectedItem ? Math.max(2, Math.floor(Number(selectedItem.standard) / 4)) : 35;
-                const weeklyPatternOut   = [3, 5, 8, 4, 10, 6, 12, 9, 7, 14, 11, 15];
-                const weeklyPatternIn    = [5, 6, 10, 5, 12, 8, 15, 10, 9, 18, 13, 20];
-                const weeklyPatternAudit = [2, 4, 3, 5, 4, 7, 5, 6, 8, 6, 9, 10];
-                buckets.forEach((b, idx) => {
-                    const pIdx = idx % 12;
-                    b.outbound = weeklyPatternOut[pIdx] * baseMultiplier;
-                    b.inbound = weeklyPatternIn[pIdx] * baseMultiplier;
-                    b.audit = weeklyPatternAudit[pIdx] * baseMultiplier;
-                });
-            }
         } else {
             // Monthly granularity calculation
             const numMonths = this.trendMonthRange === 'all' ? 12 : (Number(this.trendMonthRange) || 6);
@@ -608,22 +591,6 @@ class ChartsPageController {
                     else if (l.type === 'audit' || l.type === 'count') bucket.audit += qty;
                 }
             });
-
-            let totalOut = buckets.reduce((acc, b) => acc + b.outbound, 0);
-            let totalIn = buckets.reduce((acc, b) => acc + b.inbound, 0);
-            let totalAudit = buckets.reduce((acc, b) => acc + b.audit, 0);
-            if (totalOut === 0 && totalIn === 0 && totalAudit === 0) {
-                const baseMultiplier = selectedItem ? Math.max(3, Math.floor(Number(selectedItem.standard) / 3)) : 45;
-                const monthlyPatternOut   = [4, 6, 9, 5, 11, 7, 13, 10, 8, 15, 12, 16];
-                const monthlyPatternIn    = [6, 8, 12, 6, 14, 9, 16, 12, 10, 18, 15, 22];
-                const monthlyPatternAudit = [3, 5, 4, 6, 5, 8, 6, 7, 9, 8, 10, 12];
-                buckets.forEach((b, idx) => {
-                    const pIdx = idx % 12;
-                    b.outbound = monthlyPatternOut[pIdx] * baseMultiplier;
-                    b.inbound = monthlyPatternIn[pIdx] * baseMultiplier;
-                    b.audit = monthlyPatternAudit[pIdx] * baseMultiplier;
-                });
-            }
         }
 
         const labels = buckets.map(b => b.label);
