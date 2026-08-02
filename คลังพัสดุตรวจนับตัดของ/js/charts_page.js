@@ -274,8 +274,13 @@ class ChartsPageController {
     }
 
     ensureHistoricalLogs() {
-        // Clear all previous test logs to ensure system is 100% clean and ready to receive fresh user inputs
-        this.resetLogsToFreshState();
+        // Automatically sync live items and transaction logs from Cloudflare Worker D1 database
+        if (this.db && typeof this.db.syncFromCloudflare === "function") {
+            this.db.syncFromCloudflare().then(() => {
+                this.renderAllCharts();
+                this.renderLogsTable();
+            });
+        }
     }
 
     populateTrendItemDropdown() {

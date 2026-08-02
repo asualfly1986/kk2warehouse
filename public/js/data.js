@@ -329,6 +329,8 @@ class StockDatabase {
     async syncFromCloudflare() {
         try {
             const baseUrl = this.getApiBaseUrl();
+
+            // 1. Sync Inventory Items Stock
             const res = await fetch(`${baseUrl}/api/inventory`);
             if (res.ok) {
                 const dbItems = await res.json();
@@ -341,19 +343,19 @@ class StockDatabase {
                         const targetStock = dbItem.current_stock !== undefined ? dbItem.current_stock : dbItem.currentQty;
                         const localItem = localItems.find(i => i.code === targetCode);
                         if (localItem) {
-                            if (targetStock !== undefined && localItem.currentQty !== targetStock) {
+                            if (targetStock !== undefined && Number(localItem.currentQty) !== Number(targetStock)) {
                                 localItem.currentQty = Number(targetStock);
                                 updated = true;
                             }
-                            if (dbItem.mb52Qty !== undefined && localItem.mb52Qty !== dbItem.mb52Qty) {
+                            if (dbItem.mb52Qty !== undefined && Number(localItem.mb52Qty) !== Number(dbItem.mb52Qty)) {
                                 localItem.mb52Qty = Number(dbItem.mb52Qty);
                                 updated = true;
                             }
-                            if (dbItem.wmsQty !== undefined && localItem.wmsQty !== dbItem.wmsQty) {
+                            if (dbItem.wmsQty !== undefined && Number(localItem.wmsQty) !== Number(dbItem.wmsQty)) {
                                 localItem.wmsQty = Number(dbItem.wmsQty);
                                 updated = true;
                             }
-                            if (dbItem.kk23Qty !== undefined && localItem.kk23Qty !== dbItem.kk23Qty) {
+                            if (dbItem.kk23Qty !== undefined && Number(localItem.kk23Qty) !== Number(dbItem.kk23Qty)) {
                                 localItem.kk23Qty = Number(dbItem.kk23Qty);
                                 updated = true;
                             }
@@ -364,12 +366,47 @@ class StockDatabase {
                         localStorage.setItem(this.STORAGE_KEY_ITEMS, JSON.stringify(localItems));
                         console.log("☁️ Successfully updated local stock from Cloudflare D1!");
                         if (window.app && typeof window.app.renderStockTable === 'function') {
-                            window.app.renderStockTable(); window.app.renderDashboard();
+                            window.app.renderStockTable(); 
+                            window.app.renderDashboard();
                         }
-                        return true;
                     }
                 }
             }
+
+            // 2. Sync Transaction History Logs
+            const logsRes = await fetch(`${baseUrl}/api/logs`);
+            if (logsRes.ok) {
+                const dbLogs = await logsRes.json();
+                if (dbLogs && Array.isArray(dbLogs) && dbLogs.length > 0) {
+                    const formattedLogs = dbLogs.map(l => ({
+                        id: l.id || ("LOG-" + new Date(l.timestamp || Date.now()).getTime()),
+                        timestamp: l.timestamp || new Date().toISOString(),
+                        type: l.type || (l.qty < 0 ? 'out' : 'in'),
+                        code: l.itemCode || l.code || '',
+                        name: l.itemName || l.name || '',
+                        qty: Math.abs(Number(l.qty || 0)),
+                        unit: l.unit || 'ชิ้น',
+                        balanceBefore: Number(l.balanceBefore || 0),
+                        balanceAfter: Number(l.currentStock || l.balanceAfter || 0),
+                        requester: l.requester || '-',
+                        workOrder: l.workOrder || '-',
+                        note: l.note || '-'
+                    }));
+
+                    let existingLogs = this.getLogs();
+                    const mergedLogsMap = new Map();
+                    existingLogs.forEach(l => mergedLogsMap.set(l.id || (l.timestamp + '_' + l.code), l));
+                    formattedLogs.forEach(l => mergedLogsMap.set(l.id || (l.timestamp + '_' + l.code), l));
+
+                    const mergedArray = Array.from(mergedLogsMap.values());
+                    mergedArray.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+                    this.saveLogs(mergedArray);
+                    console.log("☁️ Successfully synced transaction logs from Cloudflare D1!");
+                }
+            }
+
+            return true;
         } catch (e) { console.warn("Cloudflare sync notice:", e.message); }
         return false;
     }
@@ -419,6 +456,27 @@ class StockDatabase {
         items[itemIndex].lastUpdated = new Date().toISOString();
         this.saveItems(items);
 
+        const logType = type === 'dispense' ? 'out' : (type === 'receive' ? 'in' : 'audit');
+        const logObj = {
+            id: "LOG-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+            timestamp: new Date().toISOString(),
+            type: logType,
+            code: code,
+            name: item.name,
+            qty: Math.abs(changeQty),
+            unit: item.unit || "ชิ้น",
+            balanceBefore: oldQty,
+            balanceAfter: newQty,
+            requester: requester,
+            workOrder: workOrder,
+            note: note
+        };
+
+        // Save log locally
+        const logs = this.getLogs();
+        logs.unshift(logObj);
+        this.saveLogs(logs);
+
         // 🟢 ส่งไปอัปเดตฐานข้อมูล D1
         if (changeToSend !== 0) {
             const baseUrl = this.getApiBaseUrl();
@@ -430,26 +488,24 @@ class StockDatabase {
                     code: code,
                     name: item.name, 
                     standard: item.standard, 
-                    newQty: newQty,
+                    currentQty: newQty,
                     change: changeToSend,
-                    type: type,
-                    requester: requester,
-                    workOrder: workOrder,
-                    note: note
+                    log: {
+                        timestamp: logObj.timestamp,
+                        type: logType,
+                        itemCode: code,
+                        itemName: item.name,
+                        qty: logObj.qty,
+                        currentStock: newQty,
+                        requester: requester,
+                        workOrder: workOrder,
+                        note: note
+                    }
                 })
             }).catch(e => console.error("D1 Update Error:", e));
         }
 
-        const logs = this.getLogs();
-        const logEntry = {
-            id: "LOG-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
-            timestamp: new Date().toISOString(), type: type, code: item.code, name: item.name,
-            qty: changeQty, unit: item.unit, balanceBefore: oldQty, balanceAfter: newQty,
-            requester: requester || "-", workOrder: workOrder || "-", note: note || "-"
-        };
-        logs.unshift(logEntry); this.saveLogs(logs);
-
-        return { item: items[itemIndex], log: logEntry };
+        return items[itemIndex];
     }
 
     updateItemImage(code, imageUrl) {
