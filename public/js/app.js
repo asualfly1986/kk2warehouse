@@ -155,7 +155,7 @@ class WarehouseApp {
             const safeUrl = encodeURI(item.imageUrl);
             return `
                 <div class="item-thumb-container" onclick="event.stopPropagation(); app.openImageViewerModal('${safeUrl.replace(/'/g, "\\'")}', '[${item.code}] ${item.name.replace(/'/g, "\\'")}')" title="คลิกเพื่อขยายรูปภาพพัสดุ">
-                    <img src="${safeUrl}" class="item-thumb-img" alt="${item.name}" loading="lazy" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\"item-thumb-placeholder\">📷</span>';">
+                    <img src="${safeUrl}" class="item-thumb-img" alt="${item.name}" style="width: 100%; height: 100%; object-fit: cover; display: block;" loading="lazy" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\"item-thumb-placeholder\">📷</span>';">
                 </div>
             `;
         }
@@ -233,16 +233,8 @@ class WarehouseApp {
                 canvas.height = targetSize;
                 const ctx = canvas.getContext("2d");
 
-                // Fill background
-                ctx.fillStyle = "#1e293b";
-                ctx.fillRect(0, 0, targetSize, targetSize);
-
-                // Calculate center crop for perfect 1:1 aspect ratio
-                const minDim = Math.min(img.width, img.height);
-                const sx = Math.max(0, (img.width - minDim) / 2);
-                const sy = Math.max(0, (img.height - minDim) / 2);
-
-                ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, targetSize, targetSize);
+                // Draw image to fill 100% of 480x480 square canvas
+                ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, targetSize, targetSize);
 
                 const compressedBase64 = canvas.toDataURL("image/jpeg", 0.85);
                 const itemCode = this.selectedItemForModal.code;
@@ -254,11 +246,11 @@ class WarehouseApp {
 
                     const container = document.getElementById("modalItemImageContainer");
                     if (container) {
-                        container.innerHTML = `<img src="${compressedBase64}" class="item-thumb-img" alt="${this.selectedItemForModal.name}">`;
+                        container.innerHTML = `<img src="${compressedBase64}" class="item-thumb-img" alt="${this.selectedItemForModal.name}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">`;
                         container.onclick = () => this.openImageViewerModal(compressedBase64, `[${itemCode}] ${this.selectedItemForModal.name}`);
                     }
 
-                    alert(`✅ ย่อขนาดและปรับรูปภาพเต็มกรอบ 1:1 ของพัสดุ [${this.selectedItemForModal.name}] เรียบร้อยแล้ว!`);
+                    alert(`✅ อัปเดตและปรับรูปถ่ายใหม่ของพัสดุ [${this.selectedItemForModal.name}] ให้แสดงผลเต็มกรอบ 100% เรียบร้อยแล้ว!`);
 
                     this.closeImageViewerModal();
                     if (this.activeTab === "dashboard") this.renderDashboard();
@@ -705,7 +697,7 @@ class WarehouseApp {
         if (modalImgContainer) {
             if (item.imageUrl) {
                 const safeUrl = encodeURI(item.imageUrl);
-                modalImgContainer.innerHTML = `<img src="${safeUrl}" class="item-thumb-img" alt="${item.name}" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\"item-thumb-placeholder\">📷</span>';">`;
+                modalImgContainer.innerHTML = `<img src="${safeUrl}" class="item-thumb-img" alt="${item.name}" style="width: 100%; height: 100%; object-fit: cover; display: block;" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\"item-thumb-placeholder\">📷</span>';">`;
                 modalImgContainer.onclick = () => this.openImageViewerModal(safeUrl, `[${item.code}] ${item.name}`);
             } else {
                 modalImgContainer.innerHTML = `<span class="item-thumb-placeholder">📷</span>`;
