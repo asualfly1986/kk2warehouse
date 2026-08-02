@@ -155,7 +155,7 @@ class WarehouseApp {
             const safeUrl = encodeURI(item.imageUrl);
             return `
                 <div class="item-thumb-container" onclick="event.stopPropagation(); app.openImageViewerModal('${safeUrl.replace(/'/g, "\\'")}', '[${item.code}] ${item.name.replace(/'/g, "\\'")}')" title="คลิกเพื่อขยายรูปภาพพัสดุ">
-                    <img src="${safeUrl}" class="item-thumb-img" alt="${item.name}" style="width: 100%; height: 100%; object-fit: cover; display: block;" loading="lazy" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\"item-thumb-placeholder\">📷</span>';">
+                    <img src="${safeUrl}" class="item-thumb-img" alt="${item.name}" style="width: 100%; height: 100%; object-fit: fill; display: block;" loading="lazy" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\"item-thumb-placeholder\">📷</span>';">
                 </div>
             `;
         }
@@ -246,7 +246,7 @@ class WarehouseApp {
 
                     const container = document.getElementById("modalItemImageContainer");
                     if (container) {
-                        container.innerHTML = `<img src="${compressedBase64}" class="item-thumb-img" alt="${this.selectedItemForModal.name}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">`;
+                        container.innerHTML = `<img src="${compressedBase64}" class="item-thumb-img" alt="${this.selectedItemForModal.name}" style="width: 100%; height: 100%; object-fit: fill; border-radius: 8px;">`;
                         container.onclick = () => this.openImageViewerModal(compressedBase64, `[${itemCode}] ${this.selectedItemForModal.name}`);
                     }
 
@@ -502,7 +502,7 @@ class WarehouseApp {
             const noticeHtml = this.getItemNoticeHtml(item, "10px");
             const safeUrl = item.imageUrl ? encodeURI(item.imageUrl) : "";
             const thumbHtml = item.imageUrl 
-                ? `<img src="${safeUrl}" loading="lazy" style="width: 38px; height: 38px; object-fit: contain; border-radius: 6px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color);" onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\"width: 38px; height: 38px; border-radius: 6px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; font-size: 18px;\">📦</div>';">`
+                ? `<img src="${safeUrl}" loading="lazy" style="width: 38px; height: 38px; object-fit: fill; border-radius: 6px; display: block; border: 1px solid var(--border-color);" onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\"width: 38px; height: 38px; border-radius: 6px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; font-size: 18px;\">📦</div>';">`
                 : `<div style="width: 38px; height: 38px; border-radius: 6px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; font-size: 18px;">📦</div>`;
 
             return `
@@ -697,7 +697,7 @@ class WarehouseApp {
         if (modalImgContainer) {
             if (item.imageUrl) {
                 const safeUrl = encodeURI(item.imageUrl);
-                modalImgContainer.innerHTML = `<img src="${safeUrl}" class="item-thumb-img" alt="${item.name}" style="width: 100%; height: 100%; object-fit: cover; display: block;" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\"item-thumb-placeholder\">📷</span>';">`;
+                modalImgContainer.innerHTML = `<img src="${safeUrl}" class="item-thumb-img" alt="${item.name}" style="width: 100%; height: 100%; object-fit: fill; display: block;" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\"item-thumb-placeholder\">📷</span>';">`;
                 modalImgContainer.onclick = () => this.openImageViewerModal(safeUrl, `[${item.code}] ${item.name}`);
             } else {
                 modalImgContainer.innerHTML = `<span class="item-thumb-placeholder">📷</span>`;
