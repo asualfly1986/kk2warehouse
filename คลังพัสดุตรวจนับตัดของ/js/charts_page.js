@@ -161,7 +161,7 @@ class ChartsPageController {
 
         if (this.topDeficitChart) this.topDeficitChart.destroy();
 
-        // Calculate deficit (standard - currentQty) and take top 10
+        // Calculate deficit (standard - currentQty) for ALL items requiring replenishment
         const deficitItems = items
             .map(i => {
                 const std = Number(i.standard || 0);
@@ -170,10 +170,15 @@ class ChartsPageController {
                 return { ...i, deficit };
             })
             .filter(i => i.deficit > 0)
-            .sort((a, b) => b.deficit - a.deficit)
-            .slice(0, 10);
+            .sort((a, b) => b.deficit - a.deficit);
 
-        const labels = deficitItems.map(i => i.name.length > 22 ? i.name.slice(0, 22) + "..." : i.name);
+        // Dynamically adjust wrapper height based on number of items so bars are never squished
+        if (canvas.parentElement) {
+            const dynamicHeight = Math.max(340, deficitItems.length * 30);
+            canvas.parentElement.style.height = `${dynamicHeight}px`;
+        }
+
+        const labels = deficitItems.map(i => i.name.length > 25 ? i.name.slice(0, 25) + "..." : i.name);
         const data = deficitItems.map(i => i.deficit);
 
         const ctx = canvas.getContext("2d");
@@ -183,11 +188,11 @@ class ChartsPageController {
             data: {
                 labels: labels,
                 datasets: [{
-                    label: "จำนวนที่ขาดและต้องสั่งเพิ่ม (Deficit Qty)",
+                    label: "จำนวนส่วนต่างที่ขาด (ต้องสั่งเพิ่ม/จัดหา)",
                     data: data,
                     backgroundColor: "#ef4444",
                     borderRadius: 6,
-                    barThickness: 18
+                    barThickness: 16
                 }]
             },
             options: {
@@ -207,6 +212,29 @@ class ChartsPageController {
                 plugins: {
                     legend: {
                         labels: { color: "#ef4444", font: { family: "Sarabun", size: 12, weight: "bold" } }
+                    },
+                    tooltip: {
+                        titleFont: { family: "Sarabun", size: 13, weight: "bold" },
+                        bodyFont: { family: "Sarabun", size: 12 },
+                        callbacks: {
+                            title: (tooltipItems) => {
+                                if (tooltipItems.length > 0) {
+                                    const idx = tooltipItems[0].dataIndex;
+                                    const item = deficitItems[idx];
+                                    return item ? `📌 ${item.name} (${item.code})` : "";
+                                }
+                                return "";
+                            },
+                            label: (context) => {
+                                const item = deficitItems[context.dataIndex];
+                                if (!item) return "";
+                                return [
+                                    ` ยอดมาตรฐานกำหนด: ${item.standard} ${item.unit}`,
+                                    ` คงเหลือจริง(2601): ${item.currentQty} ${item.unit}`,
+                                    ` 🚨 ขาดอยู่อีก: ${context.raw} ${item.unit}`
+                                ];
+                            }
+                        }
                     }
                 }
             }
