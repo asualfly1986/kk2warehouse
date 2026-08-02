@@ -141,16 +141,15 @@ class ChartsPageController {
             }
         });
 
-        // 🟢 REAL-TIME SYNC 2: Polling Cloudflare D1 every 3 seconds for multi-device sync
-        setInterval(() => {
+        // 🟢 REAL-TIME SYNC 2: Polling Cloudflare D1 every 2 seconds for multi-device sync
+        setInterval(async () => {
             if (typeof this.db.syncFromCloudflare === "function") {
-                this.db.syncFromCloudflare().then(updated => {
-                    if (updated) {
-                        this.refreshAllCharts();
-                    }
-                });
+                try {
+                    await this.db.syncFromCloudflare();
+                } catch(e) {}
+                this.refreshAllCharts();
             }
-        }, 3000);
+        }, 2000);
 
         // 🟢 REAL-TIME SYNC 3: Sync when tab gains focus
         window.addEventListener('focus', () => {

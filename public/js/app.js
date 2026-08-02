@@ -34,8 +34,8 @@ class WarehouseApp {
         this.renderDashboard();
         this.initCloudflareSync();
 
-        // Real-Time Polling Sync across devices every 3 seconds & on focus/visibility change
-        setInterval(() => this.initCloudflareSync(), 3000);
+        // Real-Time Polling Sync across devices every 2 seconds & on focus/visibility change
+        setInterval(() => this.initCloudflareSync(), 2000);
         document.addEventListener("visibilitychange", () => {
             if (!document.hidden) this.initCloudflareSync();
         });
@@ -44,18 +44,16 @@ class WarehouseApp {
 
     async initCloudflareSync() {
         try {
-            const synced = await this.db.syncFromCloudflare();
-            if (synced) {
-                this.renderHistoryTable();
-                if (this.activeTab === "dashboard") this.renderDashboard();
-                if (this.activeTab === "stock") this.renderStockTable(document.getElementById("mainSearch")?.value || "");
-                if (this.activeTab === "alerts") this.renderAlertsPage();
-                if (this.activeTab === "comp") this.renderComparisonTable();
-                if (this.activeTab === "history") this.renderHistoryTable();
-            }
+            await this.db.syncFromCloudflare();
         } catch (e) {
             console.log("Cloudflare sync notice:", e);
         }
+        this.renderHistoryTable();
+        if (this.activeTab === "dashboard") this.renderDashboard();
+        if (this.activeTab === "stock") this.renderStockTable(document.getElementById("mainSearch")?.value || "");
+        if (this.activeTab === "alerts") this.renderAlertsPage();
+        if (this.activeTab === "comp") this.renderComparisonTable();
+        if (this.activeTab === "history") this.renderHistoryTable();
     }
 
     initUI() {
