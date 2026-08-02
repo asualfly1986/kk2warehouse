@@ -508,6 +508,9 @@ class StockDatabase {
                     name: item.name, 
                     standard: item.standard, 
                     currentQty: newQty,
+                    mb52Qty: item.mb52Qty || 0,
+                    wmsQty: item.wmsQty || 0,
+                    kk23Qty: item.kk23Qty || 0,
                     change: changeToSend,
                     log: {
                         timestamp: logObj.timestamp,
@@ -522,6 +525,8 @@ class StockDatabase {
                     }
                 })
             }).catch(e => console.error("D1 Update Error:", e));
+
+            this.pushToCloudflare();
         }
 
         const updatedItem = items[itemIndex];

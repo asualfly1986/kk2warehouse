@@ -135,13 +135,28 @@ export default {
                             log.note || ''
                         ).run();
                     }
+                } else if (env && env.WAREHOUSE_KV && code) {
+                    let items = await env.WAREHOUSE_KV.get('pea_warehouse_db', { type: 'json' }) || [];
+                    let item = items.find(i => i.code === code);
+                    if (item) {
+                        if (currentQty !== undefined) item.currentQty = currentQty;
+                        if (mb52Qty !== undefined) item.mb52Qty = mb52Qty;
+                        if (wmsQty !== undefined) item.wmsQty = wmsQty;
+                        if (kk23Qty !== undefined) item.kk23Qty = kk23Qty;
+                        item.lastUpdated = new Date().toISOString();
+                    }
+                    await env.WAREHOUSE_KV.put('pea_warehouse_db', JSON.stringify(items));
 
-                    return new Response(JSON.stringify({ success: true, mode: 'd1' }), {
-                        headers: { 'Content-Type': 'application/json', ...corsHeaders }
-                    });
+                    if (log) {
+                        let logs = await env.WAREHOUSE_KV.get('pea_warehouse_logs', { type: 'json' }) || [];
+                        logs.unshift(log);
+                        await env.WAREHOUSE_KV.put('pea_warehouse_logs', JSON.stringify(logs));
+                    }
                 }
 
-                return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+                return new Response(JSON.stringify({ success: true, mode: db ? 'd1' : 'kv' }), {
+                    headers: { 'Content-Type': 'application/json', ...corsHeaders }
+                });
             } catch (err) {
                 return new Response(JSON.stringify({ success: false, error: err.message }), {
                     status: 400,
@@ -155,7 +170,10 @@ export default {
             try {
                 const body = await request.json();
 
-                if (db && Array.isArray(body)) {
+                let itemsToSync = Array.isArray(body) ? body : (body.items || []);
+                let logsToSync = Array.isArray(body) ? [] : (body.logs || []);
+
+                if (db && itemsToSync.length > 0) {
                     const stmt = db.prepare(`
                         INSERT INTO items (code, name, standard, current_stock, mb52_qty, wms_qty, kk23_qty, unit, category, updated_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
@@ -167,7 +185,7 @@ export default {
                             updated_at = CURRENT_TIMESTAMP
                     `);
 
-                    const batchStatements = body.map(item => stmt.bind(
+                    const batchStatements = itemsToSync.map(item => stmt.bind(
                         item.code, 
                         item.name || '', 
                         item.standard || 0, 
@@ -180,18 +198,20 @@ export default {
                     ));
 
                     await db.batch(batchStatements);
-
-                    return new Response(JSON.stringify({ success: true, count: body.length, mode: 'd1_batch' }), {
-                        headers: { 'Content-Type': 'application/json', ...corsHeaders }
-                    });
-                } else if (env && env.WAREHOUSE_KV) {
-                    await env.WAREHOUSE_KV.put('pea_warehouse_db', JSON.stringify(body));
-                    return new Response(JSON.stringify({ success: true, mode: 'kv' }), {
-                        headers: { 'Content-Type': 'application/json', ...corsHeaders }
-                    });
                 }
 
-                return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+                if (env && env.WAREHOUSE_KV) {
+                    if (itemsToSync.length > 0) {
+                        await env.WAREHOUSE_KV.put('pea_warehouse_db', JSON.stringify(itemsToSync));
+                    }
+                    if (logsToSync.length > 0) {
+                        await env.WAREHOUSE_KV.put('pea_warehouse_logs', JSON.stringify(logsToSync));
+                    }
+                }
+
+                return new Response(JSON.stringify({ success: true, count: itemsToSync.length }), {
+                    headers: { 'Content-Type': 'application/json', ...corsHeaders }
+                });
             } catch (err) {
                 return new Response(JSON.stringify({ success: false, error: err.message }), {
                     status: 400,
