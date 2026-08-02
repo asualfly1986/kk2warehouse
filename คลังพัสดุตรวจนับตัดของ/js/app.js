@@ -777,7 +777,7 @@ class WarehouseApp {
         this.selectedItemForModal = null;
     }
 
-    handleTransactionSubmit() {
+    async handleTransactionSubmit() {
         const type = document.getElementById("txType").value;
         const code = document.getElementById("txCode").value;
         const qtyRaw = document.getElementById("txQty").value;
@@ -835,7 +835,7 @@ class WarehouseApp {
         }
 
         try {
-            const result = this.db.processTransaction(type, code, qty, requester, workOrder, note);
+            const result = await this.db.processTransaction(type, code, qty, requester, workOrder, note);
             this.audio.playScanSuccess();
             this.closeModals();
 
@@ -850,7 +850,7 @@ class WarehouseApp {
 
             // Trigger immediate Cloudflare D1 push & cross-tab sync
             if (typeof this.db.pushToCloudflare === "function") {
-                this.db.pushToCloudflare();
+                await this.db.pushToCloudflare();
             }
 
         } catch (err) {
