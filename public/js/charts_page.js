@@ -869,21 +869,10 @@ class ChartsPageController {
             displayItems = deficitItems.slice(0, 30);
         }
 
-        const isMobile = window.innerWidth <= 640;
-
-        // Smart multi-line text wrapping with rank number prefix so EVERY name is crystal clear on Mobile & PC!
-        const maxLen = isMobile ? 14 : 26;
-        const wrapTextWithRank = (name, index) => {
+        // Smart multi-line text wrapping with rank number prefix so EVERY name is crystal clear!
+        const wrapTextWithRank = (name, index, maxLen = 26) => {
             if (!name) return "";
             const prefixedName = `${index + 1}. ${name}`;
-            
-            if (isMobile) {
-                if (prefixedName.length <= maxLen) return prefixedName;
-                const line1 = prefixedName.slice(0, maxLen);
-                const line2 = prefixedName.slice(maxLen, maxLen * 2) + (prefixedName.length > maxLen * 2 ? "..." : "");
-                return [line1, line2];
-            }
-
             if (prefixedName.length <= maxLen) return prefixedName;
             
             const words = prefixedName.split(" ");
@@ -907,14 +896,13 @@ class ChartsPageController {
             return result;
         };
 
-        // Dynamically adjust wrapper height based on multi-line text items so NO names overlap on mobile!
+        // Dynamically adjust wrapper height based on multi-line text items so NO names overlap!
         if (canvas.parentElement) {
-            const rowHeight = isMobile ? 66 : 52;
-            const dynamicHeight = Math.max(isMobile ? 440 : 380, displayItems.length * rowHeight);
+            const dynamicHeight = Math.max(380, displayItems.length * 52);
             canvas.parentElement.style.height = `${dynamicHeight}px`;
         }
 
-        const labels = displayItems.map((i, idx) => wrapTextWithRank(i.name, idx));
+        const labels = displayItems.map((i, idx) => wrapTextWithRank(i.name, idx, 26));
         const data = displayItems.map(i => i.deficit);
 
         const ctx = canvas.getContext("2d");
@@ -928,7 +916,7 @@ class ChartsPageController {
                     data: data,
                     backgroundColor: "#ef4444",
                     borderRadius: 6,
-                    barThickness: isMobile ? 12 : 16
+                    barThickness: 16
                 }]
             },
             options: {
@@ -939,28 +927,28 @@ class ChartsPageController {
                     padding: {
                         top: 10,
                         bottom: 15,
-                        left: isMobile ? 0 : 10,
-                        right: isMobile ? 10 : 20
+                        left: 10,
+                        right: 20
                     }
                 },
                 scales: {
                     x: {
-                        ticks: { color: "#94a3b8", font: { family: "Sarabun", size: isMobile ? 10 : 11 } },
+                        ticks: { color: "#94a3b8", font: { family: "Sarabun", size: 11 } },
                         grid: { color: "rgba(255, 255, 255, 0.05)" }
                     },
                     y: {
                         ticks: { 
                             autoSkip: false,
                             color: "#f8fafc", 
-                            font: { family: "Sarabun", size: isMobile ? 9.5 : 11, weight: "bold", lineHeight: 1.25 },
-                            padding: isMobile ? 4 : 8
+                            font: { family: "Sarabun", size: 11, weight: "bold" },
+                            padding: 8
                         },
                         grid: { display: false }
                     }
                 },
                 plugins: {
                     legend: {
-                        labels: { color: "#ef4444", font: { family: "Sarabun", size: isMobile ? 11 : 12, weight: "bold" } }
+                        labels: { color: "#ef4444", font: { family: "Sarabun", size: 12, weight: "bold" } }
                     },
                     tooltip: {
                         titleFont: { family: "Sarabun", size: 13, weight: "bold" },
@@ -1076,15 +1064,15 @@ class ChartsPageController {
                     x: {
                         ticks: {
                             color: "#94a3b8",
-                            font: { family: "Sarabun", size: isMobile ? 8.5 : 10 },
-                            maxRotation: isMobile ? 65 : 45,
-                            minRotation: isMobile ? 45 : 25,
+                            font: { family: "Sarabun", size: 10 },
+                            maxRotation: 45,
+                            minRotation: 25,
                             autoSkip: false
                         },
                         grid: { display: false }
                     },
                     y: {
-                        ticks: { color: "#94a3b8", font: { family: "Sarabun", size: isMobile ? 9.5 : 11 } },
+                        ticks: { color: "#94a3b8", font: { family: "Sarabun", size: 11 } },
                         grid: { color: "rgba(255, 255, 255, 0.05)" }
                     }
                 },
