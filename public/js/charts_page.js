@@ -651,6 +651,51 @@ class ChartsPageController {
         link.download = `PEA_Warehouse_Analytics_Backup_${new Date().toISOString().slice(0, 10)}.json`;
         link.click();
     }
+
+    downloadChartAsImage(canvasId, filename) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) {
+            alert("⚠️ ไม่พบกราฟที่ต้องการดาวน์โหลด");
+            return;
+        }
+
+        // Create a temporary canvas with solid dark background so the downloaded PNG is crisp & opaque
+        const tempCanvas = document.createElement("canvas");
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = canvas.height;
+        const tempCtx = tempCanvas.getContext("2d");
+
+        // Fill solid dark background (#0f172a)
+        tempCtx.fillStyle = "#0f172a";
+        tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+        // Draw original chart canvas on top
+        tempCtx.drawImage(canvas, 0, 0);
+
+        // Trigger browser image download
+        const imageURI = tempCanvas.toDataURL("image/png");
+        const link = document.createElement("a");
+        link.href = imageURI;
+        link.download = filename || `PEA_Warehouse_Chart_${canvasId}_${new Date().toISOString().slice(0, 10)}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    downloadAllChartsAsImages() {
+        const chartList = [
+            { id: 'chartStatusDoughnut', name: '1_แผนภูมิสัดส่วนสถานะพัสดุ.png' },
+            { id: 'chartLocationsBar', name: '2_กราฟยอดรวมพัสดุสะสมแยกตามคลัง.png' },
+            { id: 'chartMainBar', name: '3_กราฟเปรียบเทียบพัสดุ2601เทียบมาตรฐาน.png' },
+            { id: 'chartTopDeficitBar', name: '4_กราฟลำดับพัสดุที่ขาดสต็อกด่วนที่สุด.png' }
+        ];
+
+        chartList.forEach((c, index) => {
+            setTimeout(() => {
+                this.downloadChartAsImage(c.id, c.name);
+            }, index * 350);
+        });
+    }
 }
 
 // Initialize Global Controller
