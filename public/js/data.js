@@ -407,22 +407,34 @@ class StockDatabase {
 
                     let existingLogs = this.getLogs();
                     const mergedLogsMap = new Map();
-                    existingLogs.forEach(l => mergedLogsMap.set(l.id || (l.timestamp + '_' + l.code), l));
-                    formattedLogs.forEach(l => mergedLogsMap.set(l.id || (l.timestamp + '_' + l.code), l));
+                    
+                    // Add existing local logs
+                    existingLogs.forEach(l => {
+                        const key = (l.timestamp || '') + '_' + (l.code || '') + '_' + (l.qty || 0);
+                        mergedLogsMap.set(key, l);
+                    });
+                    
+                    // Overwrite with Cloudflare D1 logs
+                    formattedLogs.forEach(l => {
+                        const key = (l.timestamp || '') + '_' + (l.code || '') + '_' + (l.qty || 0);
+                        mergedLogsMap.set(key, l);
+                    });
 
                     const mergedArray = Array.from(mergedLogsMap.values());
                     mergedArray.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-                    this.saveLogs(mergedArray);
-                    hasChanges = true;
-                    console.log("☁️ Successfully synced transaction logs from Cloudflare D1!");
-                    
-                    if (window.app && typeof window.app.renderHistoryTable === 'function') {
-                        window.app.renderHistoryTable();
-                    }
-                    if (window.chartsPage && typeof window.chartsPage.renderLogsTable === 'function') {
-                        window.chartsPage.renderLogsTable();
-                        window.chartsPage.renderMonthlyTrendChart();
+                    if (JSON.stringify(mergedArray) !== JSON.stringify(existingLogs)) {
+                        this.saveLogs(mergedArray);
+                        hasChanges = true;
+                        console.log("☁️ Successfully synced transaction logs from Cloudflare D1!");
+                        
+                        if (window.app && typeof window.app.renderHistoryTable === 'function') {
+                            window.app.renderHistoryTable();
+                        }
+                        if (window.chartsPage && typeof window.chartsPage.renderLogsTable === 'function') {
+                            window.chartsPage.renderLogsTable();
+                            window.chartsPage.renderMonthlyTrendChart();
+                        }
                     }
                 }
             }

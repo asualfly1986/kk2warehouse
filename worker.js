@@ -78,10 +78,10 @@ export default {
                 if (db) {
                     try {
                         const { results } = await db.prepare(`
-                            SELECT id, timestamp, type, item_code AS itemCode, item_name AS itemName, qty, current_stock AS currentStock, requester, work_order AS workOrder, note
+                            SELECT id, timestamp, type, item_code AS itemCode, item_name AS itemName, qty, unit, balance_before AS balanceBefore, current_stock AS currentStock, requester, work_order AS workOrder, note
                             FROM logs
                             ORDER BY timestamp DESC
-                            LIMIT 200
+                            LIMIT 300
                         `).all();
                         if (results && results.length > 0) allLogs = results;
                     } catch (err) {}
@@ -93,7 +93,11 @@ export default {
                 }
 
                 return new Response(JSON.stringify(allLogs || []), {
-                    headers: { 'Content-Type': 'application/json', ...corsHeaders }
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+                        ...corsHeaders 
+                    }
                 });
             } catch (err) {
                 return new Response(JSON.stringify([]), { headers: corsHeaders });
@@ -128,6 +132,8 @@ export default {
                                     item_code TEXT,
                                     item_name TEXT,
                                     qty REAL,
+                                    unit TEXT,
+                                    balance_before REAL,
                                     current_stock REAL,
                                     requester TEXT,
                                     work_order TEXT,
@@ -136,14 +142,16 @@ export default {
                             `).run();
 
                             await db.prepare(`
-                                INSERT INTO logs (timestamp, type, item_code, item_name, qty, current_stock, requester, work_order, note)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                INSERT INTO logs (timestamp, type, item_code, item_name, qty, unit, balance_before, current_stock, requester, work_order, note)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                             `).bind(
                                 log.timestamp || new Date().toISOString(),
                                 log.type || 'update',
                                 log.itemCode || code,
                                 log.itemName || '',
                                 log.qty || 0,
+                                log.unit || 'ชิ้น',
+                                log.balanceBefore || 0,
                                 log.currentStock || currentQty || 0,
                                 log.requester || '',
                                 log.workOrder || '',
@@ -235,6 +243,8 @@ export default {
                                 item_code TEXT,
                                 item_name TEXT,
                                 qty REAL,
+                                unit TEXT,
+                                balance_before REAL,
                                 current_stock REAL,
                                 requester TEXT,
                                 work_order TEXT,
@@ -243,8 +253,8 @@ export default {
                         `).run();
 
                         const logStmt = db.prepare(`
-                            INSERT INTO logs (timestamp, type, item_code, item_name, qty, current_stock, requester, work_order, note)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            INSERT INTO logs (timestamp, type, item_code, item_name, qty, unit, balance_before, current_stock, requester, work_order, note)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         `);
                         const logBatch = logsToSync.slice(0, 100).map(l => logStmt.bind(
                             l.timestamp || new Date().toISOString(),
@@ -252,6 +262,8 @@ export default {
                             l.code || l.itemCode || '',
                             l.name || l.itemName || '',
                             Math.abs(Number(l.qty || 0)),
+                            l.unit || 'ชิ้น',
+                            Number(l.balanceBefore || 0),
                             Number(l.balanceAfter || l.currentStock || 0),
                             l.requester || '-',
                             l.workOrder || '-',
