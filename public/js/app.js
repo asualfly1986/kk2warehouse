@@ -652,6 +652,9 @@ class WarehouseApp {
     }
 
     openTransactionModal(item, defaultType = "dispense") {
+        if (this.activeTab !== "scan") {
+            this.switchTab("scan");
+        }
         this.closeModals();
         this.selectedItemForModal = item;
         const status = window.getItemStatus(item.currentQty, item.standard);

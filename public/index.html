@@ -6,7 +6,7 @@
     <title>ระบบตรวจนับคลังพัสดุและการเบิกจ่ายเรียลไทม์ (PEA Warehouse Management System)</title>
     
     <!-- CSS Dependencies -->
-    <link rel="stylesheet" href="css/styles.css?v=8.0">
+    <link rel="stylesheet" href="css/styles.css?v=9.0">
     
     <!-- JS Dependencies (Chart.js, JsBarcode & Html5Qrcode Camera Scanner via CDN) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -271,6 +271,90 @@
                                 🎯 กำลังส่องบาร์โค้ด... กรุณาส่องบาร์โค้ดให้อยู่ในกรอบ
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- REAL-TIME TRANSACTION & OWNER PROTECTED PHOTO UPLOAD MODAL (Scoped exclusively to Scan tab) -->
+                <div class="modal-overlay" id="txModal" hidden style="display: none !important;" onclick="if(event.target===this) app.closeModals()">
+                    <div class="modal-card" style="max-width: 580px;">
+                        <div class="modal-header">
+                            <div class="modal-title">⚡ ทำรายการเรียลไทม์ & จัดการรูปภาพพัสดุ</div>
+                            <button class="close-btn close-modal-btn">&times;</button>
+                        </div>
+                        
+                        <div style="background: rgba(0, 0, 0, 0.25); border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px; display: flex; gap: 16px; align-items: center;">
+                            <div id="modalItemImageContainer" class="item-thumb-container" style="width: 72px; height: 72px; font-size: 32px;" title="คลิกเพื่อดูรูปภาพขนาดใหญ่ หรือแก้ไข">
+                                <!-- Dynamic Modal Thumbnail -->
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-size: 12px; color: var(--text-secondary);">รหัสพัสดุ: <span id="modalItemCode" style="font-family: monospace; font-weight: 700; color: var(--accent-primary);"></span></div>
+                                <div style="font-size: 16px; font-weight: 700; margin: 4px 0;" id="modalItemName"></div>
+                                <div style="display: flex; gap: 16px; margin-top: 6px; font-size: 13px;">
+                                    <div>คงเหลือจริง(storage location 2601): <strong id="modalCurrentQty" style="color: var(--success);"></strong></div>
+                                    <div>มาตรฐานกำหนด: <strong id="modalStandardQty" style="color: var(--text-secondary);"></strong></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Item Photo Management Section (Owner Protected: Aunkung) -->
+                        <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                            <div>
+                                <div style="font-size: 13px; font-weight: 700; color: var(--accent-primary);">🖼️ รูปภาพรายการพัสดุ</div>
+                                <div style="font-size: 12px; color: var(--text-secondary);">แนบรูปถ่ายใหม่ หรือคืนค่ารูปภาพเป็นรูปหลักเริ่มต้นได้ทันที</div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" class="btn btn-outline" style="padding: 6px 12px; font-size: 12px;" onclick="app.triggerItemPhotoUpload()">
+                                    📷 เลือกรูปใหม่
+                                </button>
+                                <button type="button" class="btn btn-outline" style="padding: 6px 12px; font-size: 12px; color: #ef4444; border-color: #ef4444;" onclick="app.handleResetSingleItemPhoto()">
+                                    🔄 คืนค่ารูปเดิม
+                                </button>
+                                <input type="file" id="itemFileInput" accept="image/*" style="display: none;" onchange="app.handleItemPhotoUpload(event)">
+                            </div>
+                        </div>
+
+                        <form id="txForm">
+                            <input type="hidden" id="txCode">
+                            <div class="form-group">
+                                <label class="form-label">ประเภทการทำรายการ</label>
+                                <select id="txType" class="form-control" style="font-weight: 700;" onchange="app.handleTxTypeChange(this.value)">
+                                    <option value="dispense">📤 เบิกจ่ายพัสดุ (ตัดยอดสต็อก)</option>
+                                    <option value="receive">📥 รับเข้า / เติมพัสดุ (เพิ่มยอดสต็อก)</option>
+                                    <option value="audit">📋 ปรับยอดจากการตรวจนับ (สิทธิ์ Owner: ต้องกรอกรหัสผ่านทุกครั้ง)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">จำนวนที่ทำรายการ (<span id="txQtyUnit"></span>)</label>
+                                <input type="number" id="txQty" class="form-control" min="0" value="1" required style="font-size: 20px; font-weight: 700;" placeholder="ป้อนจำนวน...">
+                            </div>
+
+                            <!-- PRESET & DYNAMIC REQUESTERS DROPDOWN & INPUT FOR MOBILE -->
+                            <div class="form-group">
+                                <label class="form-label">👤 ชื่อผู้เบิก / หน่วยงาน (แตะเลือกจาก Dropdown List)</label>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <select id="txRequesterSelect" class="form-control" style="font-weight: 600; cursor: pointer;" onchange="app.handleRequesterSelectChange(this.value)">
+                                        <!-- Dynamic options generated from app.js -->
+                                    </select>
+                                    <input type="text" id="txRequester" class="form-control" placeholder="✏️ พิมพ์ป้อนชื่อผู้เบิก / หน่วยงานอื่น..." autocomplete="off" style="display: none;">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">เลขที่ใบสั่งงาน / งาน</label>
+                                <input type="text" id="txWorkOrder" class="form-control" placeholder="เช่น WO-690123 (งานขยายเขตสาย 22kV)">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">หมายเหตุเพิ่มเติม</label>
+                                <input type="text" id="txNote" class="form-control" placeholder="หมายเหตุ...">
+                            </div>
+
+                            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                                <button type="button" class="btn btn-outline close-modal-btn">ยกเลิก</button>
+                                <button type="submit" class="btn btn-primary" style="padding: 12px 24px;">บันทึกตัดยอดเรียลไทม์</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -566,90 +650,6 @@
                     </div>
                 </div>
             </div>
-
-    <!-- REAL-TIME TRANSACTION & OWNER PROTECTED PHOTO UPLOAD MODAL -->
-    <div class="modal-overlay" id="txModal" hidden style="display: none !important;" onclick="if(event.target===this) app.closeModals()">
-        <div class="modal-card" style="max-width: 580px;">
-            <div class="modal-header">
-                <div class="modal-title">⚡ ทำรายการเรียลไทม์ & จัดการรูปภาพพัสดุ</div>
-                <button class="close-btn close-modal-btn">&times;</button>
-            </div>
-            
-            <div style="background: rgba(0, 0, 0, 0.25); border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px; display: flex; gap: 16px; align-items: center;">
-                <div id="modalItemImageContainer" class="item-thumb-container" style="width: 72px; height: 72px; font-size: 32px;" title="คลิกเพื่อดูรูปภาพขนาดใหญ่ หรือแก้ไข">
-                    <!-- Dynamic Modal Thumbnail -->
-                </div>
-                <div style="flex: 1;">
-                    <div style="font-size: 12px; color: var(--text-secondary);">รหัสพัสดุ: <span id="modalItemCode" style="font-family: monospace; font-weight: 700; color: var(--accent-primary);"></span></div>
-                    <div style="font-size: 16px; font-weight: 700; margin: 4px 0;" id="modalItemName"></div>
-                    <div style="display: flex; gap: 16px; margin-top: 6px; font-size: 13px;">
-                        <div>คงเหลือจริง(storage location 2601): <strong id="modalCurrentQty" style="color: var(--success);"></strong></div>
-                        <div>มาตรฐานกำหนด: <strong id="modalStandardQty" style="color: var(--text-secondary);"></strong></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Item Photo Management Section (Owner Protected: Aunkung) -->
-            <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
-                <div>
-                    <div style="font-size: 13px; font-weight: 700; color: var(--accent-primary);">🖼️ รูปภาพรายการพัสดุ</div>
-                    <div style="font-size: 12px; color: var(--text-secondary);">แนบรูปถ่ายใหม่ หรือคืนค่ารูปภาพเป็นรูปหลักเริ่มต้นได้ทันที</div>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <button type="button" class="btn btn-outline" style="padding: 6px 12px; font-size: 12px;" onclick="app.triggerItemPhotoUpload()">
-                        📷 เลือกรูปใหม่
-                    </button>
-                    <button type="button" class="btn btn-outline" style="padding: 6px 12px; font-size: 12px; color: #ef4444; border-color: #ef4444;" onclick="app.handleResetSingleItemPhoto()">
-                        🔄 คืนค่ารูปเดิม
-                    </button>
-                    <input type="file" id="itemFileInput" accept="image/*" style="display: none;" onchange="app.handleItemPhotoUpload(event)">
-                </div>
-            </div>
-
-            <form id="txForm">
-                <input type="hidden" id="txCode">
-                <div class="form-group">
-                    <label class="form-label">ประเภทการทำรายการ</label>
-                    <select id="txType" class="form-control" style="font-weight: 700;" onchange="app.handleTxTypeChange(this.value)">
-                        <option value="dispense">📤 เบิกจ่ายพัสดุ (ตัดยอดสต็อก)</option>
-                        <option value="receive">📥 รับเข้า / เติมพัสดุ (เพิ่มยอดสต็อก)</option>
-                        <option value="audit">📋 ปรับยอดจากการตรวจนับ (สิทธิ์ Owner: ต้องกรอกรหัสผ่านทุกครั้ง)</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">จำนวนที่ทำรายการ (<span id="txQtyUnit"></span>)</label>
-                    <input type="number" id="txQty" class="form-control" min="0" value="1" required style="font-size: 20px; font-weight: 700;" placeholder="ป้อนจำนวน...">
-                </div>
-
-                <!-- PRESET & DYNAMIC REQUESTERS DROPDOWN & INPUT FOR MOBILE -->
-                <div class="form-group">
-                    <label class="form-label">👤 ชื่อผู้เบิก / หน่วยงาน (แตะเลือกจาก Dropdown List)</label>
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <select id="txRequesterSelect" class="form-control" style="font-weight: 600; cursor: pointer;" onchange="app.handleRequesterSelectChange(this.value)">
-                            <!-- Dynamic options generated from app.js -->
-                        </select>
-                        <input type="text" id="txRequester" class="form-control" placeholder="✏️ พิมพ์ป้อนชื่อผู้เบิก / หน่วยงานอื่น..." autocomplete="off" style="display: none;">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">เลขที่ใบสั่งงาน / งาน</label>
-                    <input type="text" id="txWorkOrder" class="form-control" placeholder="เช่น WO-690123 (งานขยายเขตสาย 22kV)">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">หมายเหตุเพิ่มเติม</label>
-                    <input type="text" id="txNote" class="form-control" placeholder="หมายเหตุ...">
-                </div>
-
-                <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
-                    <button type="button" class="btn btn-outline close-modal-btn">ยกเลิก</button>
-                    <button type="submit" class="btn btn-primary" style="padding: 12px 24px;">บันทึกตัดยอดเรียลไทม์</button>
-                </div>
-            </form>
-        </div>
-    </div>
 
     <!-- FULL-SIZE IMAGE VIEWER MODAL -->
     <div class="modal-overlay" id="imageViewerModal" hidden style="display: none !important; z-index: 10000;" onclick="app.closeImageViewerModal()">
