@@ -29,8 +29,11 @@ class ChartsPageController {
         } catch (err) {
             console.warn("Cloud D1 sync fallback to local storage:", err);
         }
+        this.updateLastUpdatedTimestamp();
         this.renderKpis();
         this.renderAllCharts();
+        this.renderCategoryPills();
+        this.renderStockTable();
     }
 
     async refreshAllCharts() {
@@ -39,8 +42,26 @@ class ChartsPageController {
                 await this.db.syncFromCloudflare();
             }
         } catch (err) {}
+        this.updateLastUpdatedTimestamp();
         this.renderKpis();
         this.renderAllCharts();
+        this.renderCategoryPills();
+        this.renderStockTable();
+    }
+
+    updateLastUpdatedTimestamp() {
+        const el = document.getElementById("chartsLastUpdated");
+        if (!el) return;
+        const now = new Date();
+        const formattedDate = now.toLocaleDateString("th-TH", {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+        el.textContent = `${formattedDate} น. (เรียลไทม์)`;
     }
 
     renderKpis() {
@@ -529,6 +550,106 @@ class ChartsPageController {
     handleSearchInput(query) {
         this.searchQuery = query;
         this.renderStockTable();
+    }
+
+    exportExcelReport() {
+        const items = this.db.getItems();
+        if (!items || items.length === 0) {
+            alert("⚠️ ไม่พบข้อมูลพัสดุสำหรับส่งออก");
+            return;
+        }
+
+        const dateFormatted = new Date().toLocaleDateString("th-TH", {
+            year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+
+        let tableRows = items.map((i, idx) => {
+            const std = Number(i.standard || 0);
+            const current = Number(i.currentQty || 0);
+            const deficit = std > current ? std - current : 0;
+            const status = window.getItemStatus(current, std);
+            const mb = Number(i.mb52Qty || 0);
+            const wm = Number(i.wmsQty || 0);
+            const kk = Number(i.kk23Qty || 0);
+            const diff = wm - mb;
+            const diffText = diff === 0 ? "0 (เท่ากัน)" : (diff > 0 ? `+${diff}` : `${diff}`);
+
+            return `
+                <tr>
+                    <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
+                    <td style="mso-number-format:'\\@'; text-align: center;">${i.code}</td>
+                    <td>${i.name}</td>
+                    <td style="text-align: center;">${status.label}</td>
+                    <td style="text-align: center; font-weight: bold;">${status.pct}%</td>
+                    <td style="text-align: right; background-color: #ecfdf5; font-weight: bold;">${std}</td>
+                    <td style="text-align: right; font-weight: bold;">${current}</td>
+                    <td style="text-align: right;">${mb}</td>
+                    <td style="text-align: right;">${wm}</td>
+                    <td style="text-align: center; font-weight: bold;">${diffText}</td>
+                    <td style="text-align: right;">${kk}</td>
+                    <td style="text-align: right; color: #dc2626; font-weight: bold;">${deficit}</td>
+                    <td style="text-align: center;">${i.unit}</td>
+                </tr>
+            `;
+        }).join("");
+
+        const excelContent = `
+            <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+            <head>
+            <meta charset="utf-8">
+            <style>
+                table { border-collapse: collapse; width: 100%; font-family: 'Sarabun', sans-serif; font-size: 11pt; }
+                th { background-color: #1e293b; color: #ffffff; font-weight: bold; border: 0.5pt solid #94a3b8; padding: 8px; text-align: center; }
+                td { border: 0.5pt solid #cbd5e1; padding: 6px; vertical-align: middle; }
+            </style>
+            </head>
+            <body>
+            <h3>📊 รายงานสรุปข้อมูลพัสดุและสต็อกเรียลไทม์ (ผปบ.กฟส.ขก.2) - ${dateFormatted}</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ลำดับ</th>
+                        <th>รหัสพัสดุ</th>
+                        <th>รายการพัสดุ</th>
+                        <th>สถานะ</th>
+                        <th>% สัดส่วน</th>
+                        <th>เกณฑ์มาตรฐาน</th>
+                        <th>คงเหลือจริง (2601)</th>
+                        <th>คงเหลือ MB52</th>
+                        <th>คงเหลือ WMS</th>
+                        <th>ส่วนต่าง (WMS-MB52)</th>
+                        <th>คลังกฟจ. (sloc 0023)</th>
+                        <th>ขาดอยู่ (ต้องสั่งเพิ่ม)</th>
+                        <th>หน่วยนับ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRows}
+                </tbody>
+            </table>
+            </body>
+            </html>
+        `;
+
+        const blob = new Blob(["\uFEFF" + excelContent], { type: "application/vnd.ms-excel;charset=utf-8;" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `รายงานพัสดุและสต็อกเรียลไทม์_${new Date().toISOString().slice(0, 10)}.xls`;
+        link.click();
+    }
+
+    exportJsonBackup() {
+        const data = {
+            items: this.db.getItems(),
+            exportDate: new Date().toISOString(),
+            system: "PEA Warehouse Management System - Analytics Export"
+        };
+        const jsonStr = JSON.stringify(data, null, 2);
+        const blob = new Blob([jsonStr], { type: "application/json" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `PEA_Warehouse_Analytics_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+        link.click();
     }
 }
 

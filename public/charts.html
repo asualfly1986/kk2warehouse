@@ -59,14 +59,24 @@
                     <p style="font-size: 13px; color: var(--text-secondary); margin: 2px 0 0 0;">
                         ผปบ.กฟส.ขก.2 | แสดงกราฟวิเคราะห์ข้อมูลสต็อกและตารางพัสดุทั้งหมดครบจบในหน้าเดียว
                     </p>
+                    <div style="font-size: 12px; color: var(--accent-primary); font-weight: 700; margin-top: 6px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                        <span>🕒 ข้อมูลอัปเดตล่าสุด:</span>
+                        <span id="chartsLastUpdated" style="color: #34d399; font-family: monospace; background: rgba(16, 185, 129, 0.15); padding: 2px 8px; border-radius: var(--radius-sm); border: 1px solid rgba(16, 185, 129, 0.3);">กำลังโหลดข้อมูลเรียลไทม์...</span>
+                    </div>
                 </div>
             </div>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <button class="btn btn-outline" style="padding: 10px 18px; font-weight: 600;" onclick="window.location.href='index.html'">
-                    🏠 กลับสู่ระบบหลัก (Main Warehouse)
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <button class="btn btn-warning" style="padding: 10px 16px; font-weight: 700; background: #f59e0b; color: #ffffff;" onclick="chartsPage.exportExcelReport()" title="ดาวน์โหลดตารางข้อมูลและรายงานสต็อกทั้งหมดเป็นไฟล์ Excel">
+                    📊 โหลดรายงาน Excel (.xls)
                 </button>
-                <button class="btn btn-primary" style="padding: 10px 18px; font-weight: 700; background: linear-gradient(135deg, #10b981, #059669);" onclick="chartsPage.refreshAllCharts()">
-                    🔄 อัปเดตข้อมูลเรียลไทม์
+                <button class="btn btn-outline" style="padding: 10px 16px; font-weight: 600;" onclick="chartsPage.exportJsonBackup()" title="ส่งออกไฟล์สำรองข้อมูล JSON">
+                    💾 สำรองข้อมูล (JSON)
+                </button>
+                <button class="btn btn-outline" style="padding: 10px 16px; font-weight: 600;" onclick="window.location.href='index.html'">
+                    🏠 กลับสู่ระบบหลัก
+                </button>
+                <button class="btn btn-primary" style="padding: 10px 16px; font-weight: 700; background: linear-gradient(135deg, #10b981, #059669);" onclick="chartsPage.refreshAllCharts()">
+                    🔄 อัปเดตเรียลไทม์
                 </button>
             </div>
         </header>
@@ -170,10 +180,18 @@
             <div class="table-header">
                 <div>
                     <div class="table-title" style="font-size: 17px; color: var(--accent-primary);">📦 รายการพัสดุและสต็อกทั้งหมดในระบบ (Real-time Warehouse Inventory Table)</div>
-                    <p style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">แสดงข้อมูลพัสดุทุกรายการ พร้อมเปรียบเทียบยอด 4 คลัง (2601, MB52, WMS, sloc 0023) ใช้ฐานข้อมูลเดียวกันกับหน้าหลัก</p>
+                    <p style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">แสดงข้อมูลพัสดุทุกรายการ พร้อมเปรียบเทียบยอด 4 คลัง (2601, MB52, WMS, sloc 0023)</p>
                 </div>
-                <div class="search-filter-bar" style="width: 100%; max-width: 420px;">
-                    <input type="text" id="chartsSearchInput" class="search-input" placeholder="🔍 พิมพ์รหัส หรือชื่อพัสดุเพื่อค้นหา..." oninput="chartsPage.handleSearchInput(this.value)">
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <button class="btn btn-warning" style="padding: 6px 12px; font-size: 12px; font-weight: 700; background: #f59e0b; color: #ffffff;" onclick="chartsPage.exportExcelReport()" title="ดาวน์โหลดไฟล์ตารางรายงานข้อมูลพัสดุทั้งหมดในรูปแบบ Excel">
+                        📊 ดาวน์โหลดไฟล์ Excel (.xls)
+                    </button>
+                    <button class="btn btn-outline" style="padding: 6px 12px; font-size: 12px;" onclick="chartsPage.exportJsonBackup()" title="ดาวน์โหลดไฟล์สำรองข้อมูล JSON">
+                        💾 สำรองข้อมูล (JSON)
+                    </button>
+                    <div class="search-filter-bar" style="width: 100%; max-width: 280px;">
+                        <input type="text" id="chartsSearchInput" class="search-input" placeholder="🔍 พิมพ์รหัส / ชื่อพัสดุ..." oninput="chartsPage.handleSearchInput(this.value)">
+                    </div>
                 </div>
             </div>
 
