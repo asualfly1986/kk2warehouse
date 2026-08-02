@@ -598,6 +598,9 @@ body {
 
 .table-responsive {
     overflow-x: auto;
+    overflow-y: auto;
+    max-height: 75vh;
+    border-top: 1px solid var(--border-color);
 }
 
 .data-table {
@@ -608,11 +611,15 @@ body {
 }
 
 .data-table th {
-    background: rgba(0, 0, 0, 0.2);
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10 !important;
+    background: #0f172a !important;
     color: var(--text-secondary);
-    font-weight: 600;
+    font-weight: 700;
     padding: 14px 20px;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 2px solid var(--border-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
 }
 
 .data-table td {
