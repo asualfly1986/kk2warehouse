@@ -1153,9 +1153,20 @@ class WarehouseApp {
                     onHover: (event, activeElements) => {
                         event.native.target.style.cursor = activeElements.length ? 'pointer' : 'default';
                     },
+                    layout: {
+                        padding: {
+                            bottom: 16
+                        }
+                    },
                     scales: {
                         x: {
-                            ticks: { color: "#94a3b8", font: { family: "Sarabun", size: 10 }, maxRotation: 45, minRotation: 25 },
+                            ticks: { 
+                                color: "#94a3b8", 
+                                font: { family: "Sarabun", size: 10 }, 
+                                maxRotation: 45, 
+                                minRotation: 25,
+                                autoSkip: false
+                            },
                             grid: { display: false }
                         },
                         y: {

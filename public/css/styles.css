@@ -398,7 +398,7 @@ body {
 .chart-wrapper {
     position: relative;
     width: 100%;
-    height: 280px;
+    height: 320px;
 }
 
 /* Interactive Filter Pills */
@@ -938,7 +938,7 @@ body {
     }
 
     .chart-wrapper {
-        height: 260px !important;
+        height: 300px !important;
     }
 
     /* Table Cards & Filter Bar for Mobile - Full Width */
