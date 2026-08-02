@@ -228,26 +228,23 @@ class WarehouseApp {
 
             img.onload = async () => {
                 const canvas = document.createElement("canvas");
-                let width = img.width;
-                let height = img.height;
-                const maxDim = 480;
-
-                if (width > maxDim || height > maxDim) {
-                    if (width > height) {
-                        height = Math.round((height * maxDim) / width);
-                        width = maxDim;
-                    } else {
-                        width = Math.round((width * maxDim) / height);
-                        height = maxDim;
-                    }
-                }
-
-                canvas.width = width;
-                canvas.height = height;
+                const targetSize = 480;
+                canvas.width = targetSize;
+                canvas.height = targetSize;
                 const ctx = canvas.getContext("2d");
-                ctx.drawImage(img, 0, 0, width, height);
 
-                const compressedBase64 = canvas.toDataURL("image/jpeg", 0.75);
+                // Fill background
+                ctx.fillStyle = "#1e293b";
+                ctx.fillRect(0, 0, targetSize, targetSize);
+
+                // Calculate center crop for perfect 1:1 aspect ratio
+                const minDim = Math.min(img.width, img.height);
+                const sx = Math.max(0, (img.width - minDim) / 2);
+                const sy = Math.max(0, (img.height - minDim) / 2);
+
+                ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, targetSize, targetSize);
+
+                const compressedBase64 = canvas.toDataURL("image/jpeg", 0.85);
                 const itemCode = this.selectedItemForModal.code;
 
                 try {
@@ -261,7 +258,7 @@ class WarehouseApp {
                         container.onclick = () => this.openImageViewerModal(compressedBase64, `[${itemCode}] ${this.selectedItemForModal.name}`);
                     }
 
-                    alert(`✅ ย่อขนาดรูปภาพและบันทึกรูปถ่ายใหม่ของพัสดุ [${this.selectedItemForModal.name}] เรียบร้อยแล้ว!`);
+                    alert(`✅ ย่อขนาดและปรับรูปภาพเต็มกรอบ 1:1 ของพัสดุ [${this.selectedItemForModal.name}] เรียบร้อยแล้ว!`);
 
                     this.closeImageViewerModal();
                     if (this.activeTab === "dashboard") this.renderDashboard();
