@@ -555,17 +555,34 @@ class StockDatabase {
         };
     }
 
-    updateItemImage(code, imageUrl) {
-        const items = this.getItems(); const item = items.find(i => i.code === code);
-        if (item) { item.imageUrl = imageUrl; this.saveItems(items); return item; } return null;
+    async updateItemImage(code, imageUrl) {
+        const items = this.getItems(); 
+        const item = items.find(i => i.code === code);
+        if (item) { 
+            item.imageUrl = imageUrl; 
+            this.saveItems(items); 
+            await this.pushToCloudflare();
+            return item; 
+        } 
+        return null;
     }
-    resetItemImage(code) {
-        const items = this.getItems(); const item = items.find(i => i.code === code);
-        if (item) { item.imageUrl = DEMO_IMAGES[code] || null; this.saveItems(items); return item; } return null;
+    async resetItemImage(code) {
+        const items = this.getItems(); 
+        const item = items.find(i => i.code === code);
+        if (item) { 
+            item.imageUrl = DEMO_IMAGES[code] || null; 
+            this.saveItems(items); 
+            await this.pushToCloudflare();
+            return item; 
+        } 
+        return null;
     }
-    resetAllItemImages() {
-        const items = this.getItems(); items.forEach(item => { item.imageUrl = DEMO_IMAGES[item.code] || null; });
-        this.saveItems(items); return items;
+    async resetAllItemImages() {
+        const items = this.getItems(); 
+        items.forEach(item => { item.imageUrl = DEMO_IMAGES[item.code] || null; });
+        this.saveItems(items); 
+        await this.pushToCloudflare();
+        return items;
     }
     resetToDefault() {
         localStorage.removeItem(this.STORAGE_KEY_ITEMS); localStorage.removeItem(this.STORAGE_KEY_LOGS);

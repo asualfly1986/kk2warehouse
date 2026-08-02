@@ -119,19 +119,21 @@ export default {
         if (url.pathname === '/api/update' && request.method === 'POST') {
             try {
                 const body = await request.json();
-                const { code, currentQty, mb52Qty, wmsQty, kk23Qty, log } = body;
+                const { code, currentQty, mb52Qty, wmsQty, kk23Qty, imageUrl, log } = body;
 
                 if (db && code) {
+                    try { await db.prepare(`ALTER TABLE items ADD COLUMN image_url TEXT`).run(); } catch(e) {}
                     await db.prepare(`
-                        INSERT INTO items (code, current_stock, mb52_qty, wms_qty, kk23_qty, updated_at)
-                        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                        INSERT INTO items (code, current_stock, mb52_qty, wms_qty, kk23_qty, image_url, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                         ON CONFLICT(code) DO UPDATE SET
                             current_stock = COALESCE(?, current_stock),
                             mb52_qty = COALESCE(?, mb52_qty),
                             wms_qty = COALESCE(?, wms_qty),
                             kk23_qty = COALESCE(?, kk23_qty),
+                            image_url = COALESCE(?, image_url),
                             updated_at = CURRENT_TIMESTAMP
-                    `).bind(code, currentQty, mb52Qty, wmsQty, kk23Qty, currentQty, mb52Qty, wmsQty, kk23Qty).run();
+                    `).bind(code, currentQty, mb52Qty, wmsQty, kk23Qty, imageUrl || null, currentQty, mb52Qty, wmsQty, kk23Qty, imageUrl || null).run();
 
                     if (log) {
                         try {
@@ -204,6 +206,7 @@ export default {
                                 if (mb52Qty !== undefined) item.mb52Qty = mb52Qty;
                                 if (wmsQty !== undefined) item.wmsQty = wmsQty;
                                 if (kk23Qty !== undefined) item.kk23Qty = kk23Qty;
+                                if (imageUrl !== undefined) item.imageUrl = imageUrl;
                                 item.lastUpdated = new Date().toISOString();
                             }
                             await env.WAREHOUSE_KV.put('pea_warehouse_db', JSON.stringify(items));
@@ -238,14 +241,16 @@ export default {
                 let logsToSync = Array.isArray(body) ? [] : (body.logs || []);
 
                 if (db && itemsToSync.length > 0) {
+                    try { await db.prepare(`ALTER TABLE items ADD COLUMN image_url TEXT`).run(); } catch(e) {}
                     const stmt = db.prepare(`
-                        INSERT INTO items (code, name, standard, current_stock, mb52_qty, wms_qty, kk23_qty, unit, category, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                        INSERT INTO items (code, name, standard, current_stock, mb52_qty, wms_qty, kk23_qty, unit, category, image_url, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                         ON CONFLICT(code) DO UPDATE SET
                             current_stock = excluded.current_stock,
                             mb52_qty = excluded.mb52_qty,
                             wms_qty = excluded.wms_qty,
                             kk23_qty = excluded.kk23_qty,
+                            image_url = COALESCE(excluded.image_url, items.image_url),
                             updated_at = CURRENT_TIMESTAMP
                     `);
 
@@ -258,7 +263,8 @@ export default {
                         item.wmsQty || 0,
                         item.kk23Qty || 0,
                         item.unit || '',
-                        item.category || ''
+                        item.category || '',
+                        item.imageUrl || null
                     ));
 
                     await db.batch(batchStatements);

@@ -226,7 +226,7 @@ class WarehouseApp {
             const rawBase64 = e.target.result;
             const img = new Image();
 
-            img.onload = () => {
+            img.onload = async () => {
                 const canvas = document.createElement("canvas");
                 let width = img.width;
                 let height = img.height;
@@ -251,7 +251,7 @@ class WarehouseApp {
                 const itemCode = this.selectedItemForModal.code;
 
                 try {
-                    const updatedItem = this.db.updateItemImage(itemCode, compressedBase64);
+                    const updatedItem = await this.db.updateItemImage(itemCode, compressedBase64);
                     this.selectedItemForModal = updatedItem || { ...this.selectedItemForModal, imageUrl: compressedBase64 };
                     this.audio.playScanSuccess();
 
@@ -269,7 +269,7 @@ class WarehouseApp {
                     if (this.activeTab === "alerts") this.renderAlertsPage();
                 } catch (err) {
                     this.audio.playError();
-                    alert(`❌ ไม่สามารถบันทึกรูปภาพได้: พื้นที่จัดเก็บความจำในเบราว์เซอร์เต็ม คุณสามารถกดปุ่ม "รีเซตรูปภาพพัสดุทั้งหมด" ในหน้าตั้งค่าเพื่อคืนพื้นที่ได้ครับ`);
+                    alert(`❌ ไม่สามารถบันทึกรูปภาพได้: ${err.message}`);
                 }
             };
 
@@ -1426,12 +1426,12 @@ class WarehouseApp {
     }
 
 
-    handleResetSingleItemPhoto() {
+    async handleResetSingleItemPhoto() {
         if (!this.selectedItemForModal) return;
         const itemCode = this.selectedItemForModal.code;
 
         if (confirm(`🔄 คุณต้องการรีเซตรูปภาพของพัสดุ [${this.selectedItemForModal.name}] กลับเป็นรูปภาพหลักเริ่มต้นใช่หรือไม่?`)) {
-            const updated = this.db.resetItemImage(itemCode);
+            const updated = await this.db.resetItemImage(itemCode);
             this.selectedItemForModal = updated;
             this.audio.playScanSuccess();
             alert(`✅ รีเซตรูปภาพพัสดุ [${updated.name}] กลับเป็นค่าเริ่มต้นเรียบร้อยแล้ว`);
@@ -1444,13 +1444,13 @@ class WarehouseApp {
         }
     }
 
-    resetAllItemPhotos() {
+    async resetAllItemPhotos() {
         if (!this.authenticateOwner("รีเซตรูปภาพพัสดุทั้งหมดกลับเป็นค่าเริ่มต้น")) {
             return;
         }
 
         if (confirm("⚠️ คุณแน่ใจหรือไม่ว่าต้องการรีเซตรูปภาพพัสดุทั้งหมดในระบบกลับเป็นรูปภาพหลักเริ่มต้น?")) {
-            this.db.resetAllItemImages();
+            await this.db.resetAllItemImages();
             this.audio.playScanSuccess();
             alert("✅ รีเซตรูปภาพพัสดุทั้งหมดกลับเป็นค่าเริ่มต้นเรียบร้อยแล้ว");
 
