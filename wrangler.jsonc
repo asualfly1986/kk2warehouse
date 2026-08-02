@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "kk2warehouse",
+  "main": "worker.js",
+  "compatibility_date": "2026-08-01",
+  "assets": {
+    "directory": "public"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "pea_warehouse_db",
+      "database_id": "f843e81c-1950-4525-8e88-fc90e9e1ec64"
+    }
+  ],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ]
+}

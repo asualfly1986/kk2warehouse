@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบตรวจนับคลังพัสดุและการเบิกจ่ายเรียลไทม์ (PEA Warehouse Management System)</title>
+    
+    <!-- CSS Dependencies -->
+    <link rel="stylesheet" href="css/styles.css?v=7.0">
+    
+    <!-- JS Dependencies (Chart.js, JsBarcode & Html5Qrcode Camera Scanner via CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand-header">
+                <div class="brand-logo">
+                    <img src="ภาพอุปกรณ์/pea_logo_designed.svg" alt="PEA Logo" onerror="this.onerror=null; this.src='https://lh3.googleusercontent.com/d/1NlyJ3Hu-nC9CjVQD8YRNjFdaChjF1O44';">
+                </div>
+                <div class="brand-title">
+                    <h1>คลังพัสดุไฟฟ้า</h1>
+                    <p>ผปบ.กฟส.ขก.2</p>
+                </div>
+            </div>
+
+            <ul class="nav-menu">
+                <li class="nav-item active" data-tab="dashboard">
+                    <span>📊</span> ภาพรวมคลัง (Dashboard)
+                </li>
+                <li class="nav-item" data-tab="scan">
+                    <span>📷</span> สแกนบาร์โค้ด เบิก-รับ
+                </li>
+                <li class="nav-item" data-tab="stock">
+                    <span>📦</span> พัสดุและสต็อกทั้งหมด
+                </li>
+                <li class="nav-item" data-tab="alerts">
+                    <span>⚠️</span> เตือนต่ำกว่ามาตรฐาน
+                    <span class="nav-badge" id="navAlertBadge">0</span>
+                </li>
+                <li class="nav-item" data-tab="comparison">
+                    <span>⚖️</span> เปรียบเทียบ MB52/WMS
+                </li>
+                <li class="nav-item" data-tab="history">
+                    <span>📜</span> ประวัติเบิก-รับย้อนหลัง
+                </li>
+                <li class="nav-item" data-tab="labels">
+                    <span>🏷️</span> พิมพ์ป้ายบาร์โค้ด
+                </li>
+                <li class="nav-item" data-tab="settings">
+                    <span>⚙️</span> จัดการสิทธิ์ / สำรองข้อมูล
+                </li>
+            </ul>
+
+            <div class="sidebar-footer">
+                <div class="status-indicator">
+                    <div class="dot-online"></div>
+                    <span>ระบบตัดยอดเรียลไทม์ (พร้อมใช้งาน)</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content View Area -->
+        <main class="main-content">
+            <!-- Top Action Header Bar -->
+            <header class="top-bar">
+                <h2 class="page-title" id="currentPageTitle">ภาพรวมคลังพัสดุ (Dashboard)</h2>
+                <div class="top-actions">
+                    <button class="btn btn-primary" onclick="app.switchTab('scan')">
+                        ⚡ สแกนบาร์โค้ดเรียลไทม์
+                    </button>
+                    <button class="btn btn-warning" onclick="app.exportReorderReport()" style="display: inline-flex; align-items: center; gap: 8px;">
+                        <img src="https://lh3.googleusercontent.com/d/1NlyJ3Hu-nC9CjVQD8YRNjFdaChjF1O44" alt="PEA Logo" style="width: 22px; height: 22px; object-fit: contain;"> ⚠️ ส่งรายงานที่ต้องจัดหา/เตือน
+                    </button>
+                    <button class="btn btn-outline" onclick="app.exportAllItemsReport()" style="display: inline-flex; align-items: center; gap: 8px;">
+                        <img src="https://lh3.googleusercontent.com/d/1NlyJ3Hu-nC9CjVQD8YRNjFdaChjF1O44" alt="PEA Logo" style="width: 22px; height: 22px; object-fit: contain;"> 📦 ส่งออกรายงานพัสดุทั้งหมด
+                    </button>
+                    <button class="btn btn-success" onclick="app.triggerImportLocationQuantities()" style="display: inline-flex; align-items: center; gap: 6px;">
+                        📥 นำเข้ายอด 3 คลัง (CSV)
+                    </button>
+                    <button class="btn btn-outline" onclick="app.downloadBatchImportTemplate()" style="display: inline-flex; align-items: center; gap: 6px;">
+                        📄 โหลดแบบฟอร์มนำเข้า (Template CSV)
+                    </button>
+                    <input type="file" id="locationImportFileInput" accept=".csv, .txt" style="display: none;" onchange="app.handleLocationBatchImport(event)">
+                </div>
+            </header>
+
+            <!-- PAGE 1: DASHBOARD -->
+            <div class="page-container active" id="page-dashboard">
+                <!-- Interactive KPI Cards (6 Stock Status Levels) -->
+                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
+                    <div class="stat-card total" id="kpiCardTotal" title="คลิกเพื่อแสดงพัสดุทั้งหมด">
+                        <div class="stat-info">
+                            <h3>พัสดุทั้งหมด (SKU)</h3>
+                            <div class="stat-value" id="statTotalSKU">0</div>
+                        </div>
+                        <div class="stat-icon">📦</div>
+                    </div>
+                    <div class="stat-card info" id="kpiCardOver" title="คลิกเพื่อแสดงรายการเกิน 100%">
+                        <div class="stat-info">
+                            <h3>🔵 เกิน 100%</h3>
+                            <div class="stat-value" id="statOverCount" style="color: #3b82f6;">0</div>
+                        </div>
+                        <div class="stat-icon">🔵</div>
+                    </div>
+                    <div class="stat-card normal" id="kpiCardFull" title="คลิกเพื่อแสดงรายการเต็ม 100%">
+                        <div class="stat-info">
+                            <h3>❇️ เต็ม 100%</h3>
+                            <div class="stat-value" id="statFullCount" style="color: #10b981;">0</div>
+                        </div>
+                        <div class="stat-icon">❇️</div>
+                    </div>
+                    <div class="stat-card" id="kpiCardGood" title="คลิกเพื่อแสดงรายการดี (81-99%)" style="border-left: 3px solid #34d399;">
+                        <div class="stat-info">
+                            <h3>🟢 ดี (81-99%)</h3>
+                            <div class="stat-value" id="statGoodCount" style="color: #34d399;">0</div>
+                        </div>
+                        <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">🟢</div>
+                    </div>
+                    <div class="stat-card" id="kpiCardNormal" title="คลิกเพื่อแสดงรายการพอดี (61-80%)" style="border-left: 3px solid #a3e635;">
+                        <div class="stat-info">
+                            <h3>🟡 พอดี (61-80%)</h3>
+                            <div class="stat-value" id="statNormalCount" style="color: #a3e635;">0</div>
+                        </div>
+                        <div class="stat-icon" style="background: rgba(132, 204, 22, 0.15); color: #a3e635;">🟡</div>
+                    </div>
+                    <div class="stat-card warning" id="kpiCardLow" title="คลิกเพื่อแสดงรายการเตือน (50-60%)" style="border-left: 3px solid #f97316;">
+                        <div class="stat-info">
+                            <h3>🟧 เตือน (50-60%)</h3>
+                            <div class="stat-value" id="statLowCount" style="color: #f97316;">0</div>
+                        </div>
+                        <div class="stat-icon" style="background: rgba(234, 88, 12, 0.15); color: #f97316;">🟧</div>
+                    </div>
+                    <div class="stat-card danger" id="kpiCardOut" title="คลิกเพื่อแสดงรายการจัดซื้อ/จัดหา (<50%)">
+                        <div class="stat-info">
+                            <h3>🔴 จัดซื้อ/จัดหา (<50%)</h3>
+                            <div class="stat-value" id="statOutOfStock" style="color: var(--danger);">0</div>
+                        </div>
+                        <div class="stat-icon">🔴</div>
+                    </div>
+                </div>
+
+                <!-- 📊 INTERACTIVE CHARTS SECTION -->
+                <div class="top-charts-grid">
+                    <!-- Chart 1: Doughnut Status % -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div>
+                                <h3 style="font-size: 16px; font-weight: 700;">⚡ สัดส่วนสถานะคลังพัสดุไฟฟ้า (6 ระดับสี)</h3>
+                                <p style="font-size: 12px; color: var(--text-secondary);">👇 คลิกชิ้นส่วนกราฟเพื่อเลือกกรองดูตาราง</p>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="stockStatusChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Scan Banner -->
+                <div class="scan-banner">
+                    <div class="scan-banner-info">
+                        <h2>📌 สแกนบาร์โค้ดตัดยอดเบิกจ่ายทันที</h2>
+                        <p>เสียบปืนยิงสแกนเนอร์ USB หรือพิมพ์รหัสพัสดุเพื่อตัดยอดคงเหลือแบบเรียลไทม์</p>
+                    </div>
+                    <button class="btn btn-primary" style="padding: 14px 28px; font-size: 16px;" onclick="app.switchTab('scan')">
+                        📷 เปิดระบบสแกนบาร์โค้ด
+                    </button>
+                </div>
+
+                <!-- ⚠️ FILTERED TABLE CARD WITH SORTABLE COLUMNS & SEQUENTIAL INDEX -->
+                <div class="table-card">
+                    <div class="table-header">
+                        <div>
+                            <div class="table-title" id="dashboardTableTitle">⚠️ รายการพัสดุแจ้งเตือนต้องสั่งซื้อ/จัดหา</div>
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">เรียงลำดับตามไฟล์มาตรฐานคลัง | คลิกหัวคอลัมน์เพื่อสลับการจัดเรียงได้</div>
+                        </div>
+                        <div class="filter-pills-bar">
+                            <button class="filter-pill active" data-filter="alerts" onclick="app.setDashboardFilter('alerts')">⚠️ แจ้งเตือนรวม</button>
+                            <button class="filter-pill" data-filter="out_of_stock" onclick="app.setDashboardFilter('out_of_stock')">🔴 จัดซื้อ/จัดหา (<50%)</button>
+                            <button class="filter-pill" data-filter="low" onclick="app.setDashboardFilter('low')">🟧 เตือน (50-60%)</button>
+                            <button class="filter-pill" data-filter="normal" onclick="app.setDashboardFilter('normal')">🟡 พอดี (61-80%)</button>
+                            <button class="filter-pill" data-filter="good" onclick="app.setDashboardFilter('good')">🟢 ดี (81-99%)</button>
+                            <button class="filter-pill" data-filter="full" onclick="app.setDashboardFilter('full')">❇️ เต็ม 100%</button>
+                            <button class="filter-pill" data-filter="over" onclick="app.setDashboardFilter('over')">🔵 เกิน 100%</button>
+                            <button class="filter-pill" data-filter="all" onclick="app.setDashboardFilter('all')">📦 ทั้งหมด</button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50px; text-align: center;">ลำดับ</th>
+                                    <th>รูปภาพ</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('code')" title="คลิกเพื่อเรียงตามรหัสพัสดุ">รหัสพัสดุ ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('name')" title="คลิกเพื่อเรียงตามชื่อพัสดุ">รายการ ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('pct')" title="คลิกเพื่อเรียงตามสถานะ">สถานะ % ⇕</th>
+                                    <th style="cursor: pointer; user-select: none; background: rgba(16, 185, 129, 0.25) !important; color: #34d399 !important; font-weight: 700; border-bottom: 2px solid #10b981; border-left: 1px solid rgba(16, 185, 129, 0.3); border-right: 1px solid rgba(16, 185, 129, 0.3);" onclick="app.handleSort('standard')" title="คลิกเพื่อเรียงตามเกณฑ์มาตรฐาน (สีเขียวทั้งคอลัมน์)">❇️ มาตรฐาน ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('currentQty')" title="คลิกเพื่อเรียงตามคงเหลือ 2601">คงเหลือจริง(storage location 2601) ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('mb52Qty')" title="คลิกเพื่อเรียงตาม MB52">คงเหลือใน MB52 ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('wmsQty')" title="คลิกเพื่อเรียงตาม WMS">คงเหลือใน WMS ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('wmsVsMb52')" title="คลิกเพื่อเรียงตามส่วนต่าง WMS เทียบกับ MB52">⚖️ WMS vs MB52 (ส่วนต่าง) ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('kk23Qty')" title="คลิกเพื่อเรียงตามคลัง 0023">คลังกฟจ.ขอนแก่น (sloc 0023) ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('comparison')" title="คลิกเพื่อเรียงตามการเปรียบเทียบยอดคลัง">🔍 เปรียบเทียบยอดคลัง ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('pct')" title="คลิกเพื่อเรียงตาม %">% คงเหลือ ⇕</th>
+                                    <th>ทำรายการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dashboardAlertsTbody">
+                                <!-- Dynamic Filtered Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 2: SCAN & TRANSACTION -->
+            <div class="page-container" id="page-scan">
+                <div class="scanner-box" style="max-width: 600px; margin: 0 auto;">
+                    <h2 style="font-size: 24px; margin-bottom: 8px;">📷 ยิงสแกนบาร์โค้ด หรือป้อนรหัสพัสดุ</h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 20px;">รองรับทั้งสแกนเนอร์ USB, พิมพ์รหัสพัสดุ และ **ใช้กล้องถ่ายรูปสแกนบาร์โค้ดบนโทรศัพท์มือถือ**</p>
+                    
+                    <!-- Manual / USB Scanner Input with Auto-Suggest Dropdown -->
+                    <div class="scan-input-group" style="margin-bottom: 20px; position: relative;">
+                        <input type="text" id="barcodeInput" class="scan-input" placeholder="ยิงบาร์โค้ด หรือพิมพ์รหัส / ชื่อพัสดุเพื่อเลือก..." autofocus onkeypress="if(event.key==='Enter') app.handleManualScanInput()" oninput="app.handleBarcodeInputLiveSearch(this.value)" onfocus="app.handleBarcodeInputLiveSearch(this.value)">
+                        <button class="btn btn-primary" onclick="app.handleManualScanInput()">ค้นหา / เบิก</button>
+                        
+                        <!-- Dynamic Auto-Suggest Dropdown List -->
+                        <div id="barcodeSearchResults" class="search-autocomplete-box" style="display: none;"></div>
+                    </div>
+
+                    <!-- Mobile Camera Scanner Controls -->
+                    <div style="border-top: 1px solid var(--border-color); padding-top: 20px; text-align: center;">
+                        <h4 style="font-size: 15px; color: var(--accent-primary); margin-bottom: 12px;">📱 ระบบสแกนด้วยกล้องมือถือ / เว็บแคม</h4>
+                        <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 16px;">
+                            <button id="btnStartCamera" class="btn btn-success" onclick="app.startCameraScanner()" style="padding: 10px 20px; font-weight: bold;">
+                                📷 เปิดกล้องสแกนบาร์โค้ด
+                            </button>
+                            <button id="btnStopCamera" class="btn btn-outline" onclick="app.stopCameraScanner()" style="display: none; padding: 10px 16px; color: #ef4444; border-color: #ef4444;">
+                                ⏹️ ปิดกล้อง
+                            </button>
+                            <button id="btnSwitchCamera" class="btn btn-outline" onclick="app.switchCameraFacingMode()" style="display: none; padding: 10px 16px;">
+                                🔄 สลับกล้อง (หน้า/หลัง)
+                            </button>
+                        </div>
+
+                        <!-- Camera Viewfinder Box -->
+                        <div id="cameraScannerContainer" style="display: none; position: relative; width: 100%; max-width: 480px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 3px solid var(--accent-primary); background: #000; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+                            <div id="cameraScannerView" style="width: 100%;"></div>
+                            <div id="cameraScanStatus" style="position: absolute; bottom: 10px; left: 0; right: 0; background: rgba(15, 23, 42, 0.85); color: #34d399; font-size: 12px; padding: 6px 12px; font-weight: 600; text-align: center; z-index: 10;">
+                                🎯 กำลังส่องบาร์โค้ด... กรุณาส่องบาร์โค้ดให้อยู่ในกรอบ
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 3: ALL STOCK LIST -->
+            <div class="page-container" id="page-stock">
+                <div class="table-card">
+                    <div class="table-header">
+                        <div class="table-title">📦 ข้อมูลรายการพัสดุในคลังทั้งหมด (เรียงลำดับตามไฟล์หลัก)</div>
+                        <div class="search-filter-bar">
+                            <input type="text" id="mainSearch" class="search-input" placeholder="🔍 ค้นหารหัสพัสดุ หรือชื่อรายการ...">
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50px; text-align: center;">ลำดับ</th>
+                                    <th>รูปภาพ</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('code')">รหัสพัสดุ ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('name')">รายการพัสดุ ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('pct')">สถานะ % ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('currentQty')">คงเหลือจริง(storage location 2601) ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('mb52Qty')">คงเหลือใน MB52 ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('wmsQty')">คงเหลือใน WMS ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('wmsVsMb52')">⚖️ WMS vs MB52 (ส่วนต่าง) ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('kk23Qty')">คลังกฟจ.ขอนแก่น (sloc 0023) ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('comparison')">🔍 เปรียบเทียบยอดคลัง ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('standard')">ยอดมาตรฐาน ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('pct')">% คงเหลือ ⇕</th>
+                                    <th>ตัดยอด / เติม</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stockTbody">
+                                <!-- Dynamic Stock Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 4: LOW STOCK ALERTS -->
+            <div class="page-container" id="page-alerts">
+                <div class="table-card">
+                    <div class="table-header">
+                        <div class="table-title">⚠️ รายการพัสดุต้องจัดซื้อ/จัดหา (<50%) และพัสดุเตือน (50-60%)</div>
+                        <button class="btn btn-success" onclick="app.exportReorderReport()">📥 โหลดไฟล์ Excel/CSV รายการต้องจัดหา/เตือน</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50px; text-align: center;">ลำดับ</th>
+                                    <th>รูปภาพ</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('code')">รหัสพัสดุ ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('name')">รายการพัสดุ ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('pct')">สถานะ % ⇕</th>
+                                    <th style="cursor: pointer; user-select: none; background: rgba(16, 185, 129, 0.25) !important; color: #34d399 !important; font-weight: 700; border-bottom: 2px solid #10b981; border-left: 1px solid rgba(16, 185, 129, 0.3); border-right: 1px solid rgba(16, 185, 129, 0.3);" onclick="app.handleSort('standard')" title="คลิกเพื่อเรียงตามเกณฑ์มาตรฐาน (สีเขียวทั้งคอลัมน์)">❇️ เกณฑ์มาตรฐาน ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('currentQty')">คงเหลือจริง(storage location 2601) ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('mb52Qty')">คงเหลือใน MB52 ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('wmsQty')">คงเหลือใน WMS ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('wmsVsMb52')">⚖️ WMS vs MB52 (ส่วนต่าง) ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('kk23Qty')">คลังกฟจ.ขอนแก่น (sloc 0023) ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('comparison')">🔍 เปรียบเทียบยอดคลัง ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('pct')">สถานะคงเหลือ (% ขาด) ⇕</th>
+                                    <th>จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="alertsTbody">
+                                <!-- Dynamic Alert Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 4.5: DEDICATED WMS & MB52 COMPARISON TABLE PAGE -->
+            <div class="page-container" id="page-comparison">
+                <!-- Summary KPI Cards for MB52 vs WMS Comparison -->
+                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom: 24px;">
+                    <div class="stat-card" id="compCardTotal" onclick="app.setCompFilter('all')" style="cursor: pointer; border-left: 4px solid var(--accent-primary);">
+                        <div class="stat-header">
+                            <span class="stat-title">พัสดุเปรียบเทียบทั้งหมด</span>
+                            <span class="stat-icon">⚖️</span>
+                        </div>
+                        <div class="stat-value" id="compStatTotalSKU">0</div>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">รายการพัสดุในระบบ</div>
+                    </div>
+                    <div class="stat-card" id="compCardEqual" onclick="app.setCompFilter('equal')" style="cursor: pointer; border-left: 4px solid #10b981;">
+                        <div class="stat-header">
+                            <span class="stat-title">ยอดตรงกัน (WMS = MB52)</span>
+                            <span class="stat-icon">🟢</span>
+                        </div>
+                        <div class="stat-value" id="compStatEqualCount" style="color: #10b981;">0</div>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">คลัง MB52 เท่ากับ WMS</div>
+                    </div>
+                    <div class="stat-card" id="compCardWmsOver" onclick="app.setCompFilter('wms_over')" style="cursor: pointer; border-left: 4px solid #3b82f6;">
+                        <div class="stat-header">
+                            <span class="stat-title">WMS มากกว่า MB52</span>
+                            <span class="stat-icon">🔵</span>
+                        </div>
+                        <div class="stat-value" id="compStatWmsOverCount" style="color: #3b82f6;">0</div>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">ยอด WMS > MB52</div>
+                    </div>
+                    <div class="stat-card" id="compCardWmsUnder" onclick="app.setCompFilter('wms_under')" style="cursor: pointer; border-left: 4px solid #ef4444;">
+                        <div class="stat-header">
+                            <span class="stat-title">WMS น้อยกว่า MB52</span>
+                            <span class="stat-icon">🔴</span>
+                        </div>
+                        <div class="stat-value" id="compStatWmsUnderCount" style="color: #ef4444;">0</div>
+                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">ยอด WMS < MB52</div>
+                    </div>
+                </div>
+
+                <!-- Comparison Table Card -->
+                <div class="table-card">
+                    <div class="table-header" style="flex-wrap: wrap; gap: 12px;">
+                        <div>
+                            <div class="table-title" id="compTableTitle">⚖️ ตารางเปรียบเทียบยอดคงเหลือ WMS และ MB52 ที่นำเข้า</div>
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">เปรียบเทียบยอดของแต่ละรายการ เพื่อตรวจสอบส่วนต่างและความถูกต้องของการนำเข้าข้อมูล</div>
+                        </div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="btn btn-success" onclick="app.exportWmsMb52ComparisonReport()">
+                                📥 โหลดไฟล์รายงานเปรียบเทียบ WMS vs MB52 (Excel)
+                            </button>
+                            <button class="btn btn-outline" onclick="app.triggerImportLocationQuantities()">
+                                📥 นำเข้าไฟล์ยอด MB52/WMS (CSV)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Search & Filter Controls -->
+                    <div style="padding: 12px 20px; border-bottom: 1px solid var(--border-color); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; background: rgba(0,0,0,0.1);">
+                        <input type="text" id="compSearchInput" class="search-input" style="max-width: 320px;" placeholder="🔍 ค้นหารหัสพัสดุ หรือชื่อพัสดุ..." oninput="app.renderComparisonTable()">
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                            <button class="filter-pill active" id="compFilterAll" onclick="app.setCompFilter('all')">ทั้งหมด</button>
+                            <button class="filter-pill" id="compFilterDiff" onclick="app.setCompFilter('diff')" style="color: #f97316;">⚠️ เฉพาะรายการมีส่วนต่าง</button>
+                            <button class="filter-pill" id="compFilterEqual" onclick="app.setCompFilter('equal')">🟢 ยอดตรงกัน</button>
+                            <button class="filter-pill" id="compFilterWmsOver" onclick="app.setCompFilter('wms_over')">🔵 WMS > MB52</button>
+                            <button class="filter-pill" id="compFilterWmsUnder" onclick="app.setCompFilter('wms_under')">🔴 WMS < MB52</button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50px; text-align: center;">ลำดับ</th>
+                                    <th>รูปภาพ</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('code')">รหัสพัสดุ ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('name')">รายการพัสดุ ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('currentQty')">คงเหลือจริง(sloc 2601) ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('mb52Qty')" style="background: rgba(147, 51, 234, 0.1);">คงเหลือใน MB52 ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('wmsQty')" style="background: rgba(59, 130, 246, 0.1);">คงเหลือใน WMS ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('wmsVsMb52')">⚖️ ส่วนต่าง (WMS - MB52) ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('kk23Qty')">คลังกฟจ.ขอนแก่น (sloc 0023) ⇕</th>
+                                    <th style="cursor: pointer; user-select: none;" onclick="app.handleSort('comparison')">🔍 เปรียบเทียบ 4 คลัง ⇕</th>
+                                    <th>จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="comparisonTbody">
+                                <!-- Dynamic Comparison Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 5: HISTORY LOGS -->
+            <div class="page-container" id="page-history">
+                <div class="table-card">
+                    <div class="table-header" style="flex-wrap: wrap; gap: 12px;">
+                        <div>
+                            <div class="table-title">📜 ประวัติการเบิกจ่าย รับเข้า และตรวจนับพัสดุย้อนหลัง</div>
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">บันทึกประวัติการเบิกจ่าย รับเข้า และปรับยอดตรวจนับพัสดุทั้งหมดเรียลไทม์</div>
+                        </div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="btn btn-primary" onclick="app.printHistoryLog()" style="display: inline-flex; align-items: center; gap: 6px;">
+                                🖨️ ปริ้นท์รายงานประวัติทั้งหมด
+                            </button>
+                            <button class="btn btn-success" onclick="app.exportHistoryLogToExcel()" style="display: inline-flex; align-items: center; gap: 6px;">
+                                📥 โหลดไฟล์ Excel ประวัติย้อนหลัง
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>วัน-เวลา</th>
+                                    <th>ประเภท</th>
+                                    <th>รหัสพัสดุ</th>
+                                    <th>รายการพัสดุ</th>
+                                    <th>จำนวน</th>
+                                    <th>คงเหลือหลังทำรายการ</th>
+                                    <th>ผู้เบิก/ผู้ทำรายการ</th>
+                                    <th>งาน/หมายเหตุ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTbody">
+                                <!-- Dynamic History Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 6: BARCODE LABELS PRINT -->
+            <div class="page-container" id="page-labels">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                    <div>
+                        <h3 style="font-size: 20px;">🏷️ ป้ายบาร์โค้ดพัสดุ (Code 128) สำหรับติดชั้นวาง</h3>
+                        <p style="color: var(--text-secondary); font-size: 14px;">สามารถกดสั่งพิมพ์ออกทางเครื่องพิมพ์ (Printer) เพื่อติดที่ตู้/ชั้นพัสดุ</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="window.print()">🖨️ พิมพ์ป้ายบาร์โค้ดทั้งหมด</button>
+                </div>
+                
+                <div class="barcode-labels-grid" id="barcodeLabelsContainer">
+                    <!-- Dynamic Barcode Labels -->
+                </div>
+            </div>
+
+            <!-- PAGE 7: SETTINGS, OWNER PERMISSION, REQUESTERS MANAGEMENT & BACKUP -->
+            <div class="page-container" id="page-settings">
+                <!-- OWNER PERMISSION CONTROL CARD -->
+                <div class="table-card" style="padding: 32px; margin-bottom: 28px; border-left: 4px solid var(--accent-primary);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; flex-wrap: wrap;">
+                        <div>
+                            <h3 style="font-size: 20px; margin-bottom: 6px;">🔐 การควบคุมสิทธิ์เจ้าของระบบ (Owner Permission Control)</h3>
+                            <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px;">
+                                กำหนดสิทธิ์ผู้ใช้งานในการ **"ปรับยอดจากการตรวจนับ (Count Override)"** โดยเจ้าของระบบสามารถอนุมัติอนุญาต หรือยกเลิกสิทธิ์การปรับยอดได้ตลอดเวลา
+                            </p>
+                            <div>
+                                <span id="permStatusBadge" class="badge badge-success" style="font-size: 14px; padding: 6px 14px;">
+                                    🟢 อนุญาตใช้งานสิทธิ์ตรวจนับ (Granted)
+                                </span>
+                            </div>
+                        </div>
+                        <div>
+                            <button id="permToggleBtn" class="btn btn-danger" style="padding: 12px 24px; font-size: 14px;" onclick="app.toggleAuditPermission()">
+                                🚫 ยกเลิกสิทธิ์การปรับยอดตรวจนับ (Revoke Permission)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 👤 REQUESTERS PERSONNEL MANAGEMENT CARD -->
+                <div class="table-card" style="padding: 32px; margin-bottom: 28px; border-left: 4px solid var(--success);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                        <div>
+                            <h3 style="font-size: 20px;">👤 จัดการรายชื่อผู้เบิก / หน่วยงาน (ต้องกรอกรหัสผ่านทุกครั้งเมื่อเพิ่ม-ลบรายชื่อ)</h3>
+                            <p style="color: var(--text-secondary); font-size: 14px; margin-top: 2px;">
+                                การเพิ่มหรือลบรายชื่อผู้เบิก ต้องยืนยันรหัสผ่านเจ้าของสิทธิ์ทุกครั้งก่อนดำเนินการ
+                            </p>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <span id="requestersCountBadge" class="badge badge-info" style="font-size: 14px; padding: 6px 14px;">0 ท่าน</span>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 12px; margin-bottom: 24px; max-width: 500px;">
+                        <input type="text" id="newRequesterInput" class="form-control" placeholder="พิมพ์ชื่อ-นามสกุล หรือหน่วยงานใหม่..." onkeypress="if(event.key==='Enter') app.handleAddRequester()">
+                        <button class="btn btn-success" style="white-space: nowrap; padding: 10px 20px;" onclick="app.handleAddRequester()">
+                            ➕ เพิ่มรายชื่อ
+                        </button>
+                    </div>
+
+                    <div id="requestersListContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; max-height: 400px; overflow-y: auto; padding-right: 6px;">
+                        <!-- Dynamic Personnel Cards -->
+                    </div>
+                </div>
+
+                <!-- DATA BACKUP & RESET CARD (RESTRICTED STRICTLY TO OWNER WITH PIN VERIFICATION) -->
+                <div class="table-card" style="padding: 32px; border-left: 4px solid var(--danger);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 12px;">
+                        <h3 style="font-size: 20px;">⚙️ การจัดการข้อมูลและการสำรองข้อมูล (Data Persistence & Backup)</h3>
+                        <span class="badge badge-danger" style="font-size: 13px; padding: 6px 12px;">🔒 เฉพาะสิทธิ์เจ้าของระบบเท่านั้น</span>
+                    </div>
+                    <p style="color: var(--text-secondary); margin-bottom: 24px;">
+                        การส่งออกไฟล์ Backup หรือการคืนค่ารีเซ็ตระบบพัสดุ ถูกจำกัดสิทธิ์เฉพาะเจ้าของระบบเท่านั้น โดยต้องยืนยันรหัสผ่านเจ้าของสิทธิ์ก่อนดำเนินการ
+                    </p>
+                    
+                    <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                        <button class="btn btn-primary" onclick="app.exportBackupData()">
+                            💾 ส่งออกไฟล์สำรองข้อมูล (Owner Protected Backup JSON)
+                        </button>
+                        <button class="btn btn-warning" style="background: #f59e0b; color: #ffffff;" onclick="app.resetAllItemPhotos()">
+                            🖼️ รีเซตรูปภาพพัสดุทั้งหมดกลับเป็นค่าเริ่มต้น (Reset Photos)
+                        </button>
+                        <button class="btn btn-danger" onclick="app.resetSystemData()">
+                            🔄 คืนค่าข้อมูลพัสดุตั้งต้น (Owner Factory Reset)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+    <!-- REAL-TIME TRANSACTION & OWNER PROTECTED PHOTO UPLOAD MODAL -->
+    <div class="modal-overlay" id="txModal" hidden style="display: none !important;" onclick="if(event.target===this) app.closeModals()">
+        <div class="modal-card" style="max-width: 580px;">
+            <div class="modal-header">
+                <div class="modal-title">⚡ ทำรายการเรียลไทม์ & จัดการรูปภาพพัสดุ</div>
+                <button class="close-btn close-modal-btn">&times;</button>
+            </div>
+            
+            <div style="background: rgba(0, 0, 0, 0.25); border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px; display: flex; gap: 16px; align-items: center;">
+                <div id="modalItemImageContainer" class="item-thumb-container" style="width: 72px; height: 72px; font-size: 32px;" title="คลิกเพื่อดูรูปภาพขนาดใหญ่ หรือแก้ไข">
+                    <!-- Dynamic Modal Thumbnail -->
+                </div>
+                <div style="flex: 1;">
+                    <div style="font-size: 12px; color: var(--text-secondary);">รหัสพัสดุ: <span id="modalItemCode" style="font-family: monospace; font-weight: 700; color: var(--accent-primary);"></span></div>
+                    <div style="font-size: 16px; font-weight: 700; margin: 4px 0;" id="modalItemName"></div>
+                    <div style="display: flex; gap: 16px; margin-top: 6px; font-size: 13px;">
+                        <div>คงเหลือจริง(storage location 2601): <strong id="modalCurrentQty" style="color: var(--success);"></strong></div>
+                        <div>มาตรฐานกำหนด: <strong id="modalStandardQty" style="color: var(--text-secondary);"></strong></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Item Photo Management Section (Owner Protected: Aunkung) -->
+            <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                <div>
+                    <div style="font-size: 13px; font-weight: 700; color: var(--accent-primary);">🖼️ รูปภาพรายการพัสดุ</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">แนบรูปถ่ายใหม่ หรือคืนค่ารูปภาพเป็นรูปหลักเริ่มต้นได้ทันที</div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" class="btn btn-outline" style="padding: 6px 12px; font-size: 12px;" onclick="app.triggerItemPhotoUpload()">
+                        📷 เลือกรูปใหม่
+                    </button>
+                    <button type="button" class="btn btn-outline" style="padding: 6px 12px; font-size: 12px; color: #ef4444; border-color: #ef4444;" onclick="app.handleResetSingleItemPhoto()">
+                        🔄 คืนค่ารูปเดิม
+                    </button>
+                    <input type="file" id="itemFileInput" accept="image/*" style="display: none;" onchange="app.handleItemPhotoUpload(event)">
+                </div>
+            </div>
+
+            <form id="txForm">
+                <input type="hidden" id="txCode">
+                <div class="form-group">
+                    <label class="form-label">ประเภทการทำรายการ</label>
+                    <select id="txType" class="form-control" style="font-weight: 700;" onchange="app.handleTxTypeChange(this.value)">
+                        <option value="dispense">📤 เบิกจ่ายพัสดุ (ตัดยอดสต็อก)</option>
+                        <option value="receive">📥 รับเข้า / เติมพัสดุ (เพิ่มยอดสต็อก)</option>
+                        <option value="audit">📋 ปรับยอดจากการตรวจนับ (สิทธิ์ Owner: ต้องกรอกรหัสผ่านทุกครั้ง)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">จำนวนที่ทำรายการ (<span id="txQtyUnit"></span>)</label>
+                    <input type="number" id="txQty" class="form-control" min="0" value="1" required style="font-size: 20px; font-weight: 700;" placeholder="ป้อนจำนวน...">
+                </div>
+
+                <!-- PRESET & DYNAMIC REQUESTERS DROPDOWN & INPUT FOR MOBILE -->
+                <div class="form-group">
+                    <label class="form-label">👤 ชื่อผู้เบิก / หน่วยงาน (แตะเลือกจาก Dropdown List)</label>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <select id="txRequesterSelect" class="form-control" style="font-weight: 600; cursor: pointer;" onchange="app.handleRequesterSelectChange(this.value)">
+                            <!-- Dynamic options generated from app.js -->
+                        </select>
+                        <input type="text" id="txRequester" class="form-control" placeholder="✏️ พิมพ์ป้อนชื่อผู้เบิก / หน่วยงานอื่น..." autocomplete="off" style="display: none;">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">เลขที่ใบสั่งงาน / งาน</label>
+                    <input type="text" id="txWorkOrder" class="form-control" placeholder="เช่น WO-690123 (งานขยายเขตสาย 22kV)">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">หมายเหตุเพิ่มเติม</label>
+                    <input type="text" id="txNote" class="form-control" placeholder="หมายเหตุ...">
+                </div>
+
+                <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                    <button type="button" class="btn btn-outline close-modal-btn">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary" style="padding: 12px 24px;">บันทึกตัดยอดเรียลไทม์</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- FULL-SIZE IMAGE VIEWER MODAL -->
+    <div class="modal-overlay" id="imageViewerModal" hidden style="display: none !important; z-index: 10000;" onclick="app.closeImageViewerModal()">
+        <div style="position: relative; max-width: 90vw; max-height: 90vh; display: flex; flex-direction: column; align-items: center;" onclick="event.stopPropagation()">
+            <button class="close-btn" style="position: absolute; top: -40px; right: 0; color: #ffffff; font-size: 32px;" onclick="app.closeImageViewerModal()">&times;</button>
+            <img id="imageViewerImg" class="image-preview-modal-content" src="" alt="รูปพัสดุ">
+            <div id="imageViewerCaption" style="margin-top: 12px; font-size: 15px; font-weight: 600; color: #ffffff; background: rgba(0,0,0,0.6); padding: 8px 16px; border-radius: var(--radius-md);"></div>
+            <div style="margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn btn-primary" style="font-size: 13px; padding: 8px 16px;" onclick="app.triggerItemPhotoUpload()">📷 เปลี่ยนเป็นรูปใหม่</button>
+                <button class="btn btn-danger" style="font-size: 13px; padding: 8px 16px;" onclick="app.handleResetSingleItemPhoto()">🔄 คืนค่ารูปเดิมรายการนี้</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL FOR EDITING 3 STORAGE LOCATION QUANTITIES (OWNER PROTECTED: Aunkung) -->
+    <div class="modal-overlay" id="locationModal" hidden style="display: none !important;" onclick="if(event.target===this) app.closeModals()">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 class="modal-title">🔐 ปรับยอดคงเหลือ 3 คลัง (สิทธิ์ Owner: Aunkung)</h3>
+                <button class="close-modal-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 16px;">
+                    <div style="font-size: 12px; color: var(--accent-primary); font-weight: 700; font-family: monospace;" id="locModalCode"></div>
+                    <div style="font-size: 15px; font-weight: 700; color: var(--text-primary); margin-top: 2px;" id="locModalName"></div>
+                </div>
+                <form id="locationForm" onsubmit="event.preventDefault(); app.handleSaveLocationQuantities();">
+                    <input type="hidden" id="locCode">
+                    <div class="form-group">
+                        <label class="form-label">📊 คงเหลือใน MB52</label>
+                        <input type="number" id="locMb52Qty" class="form-control" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">📦 คงเหลือใน WMS</label>
+                        <input type="number" id="locWmsQty" class="form-control" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">🏢 คงเหลือ คลังกฟจ.ขอนแก่น (storage location 0023)</label>
+                        <input type="number" id="locKk23Qty" class="form-control" min="0" required>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 24px;">
+                        <button type="button" class="btn btn-outline close-modal-btn" style="flex: 1;">ยกเลิก</button>
+                        <button type="submit" class="btn btn-primary" style="flex: 2; padding: 12px;">💾 บันทึกยอดคลัง</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+        </main>
+    </div>
+
+    <!-- App Scripts -->
+    <script src="js/data.js"></script>
+    <script src="js/barcode.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
