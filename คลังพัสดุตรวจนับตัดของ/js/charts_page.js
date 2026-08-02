@@ -7,6 +7,9 @@ class ChartsPageController {
         this.db = window.db || new StockDatabase();
         this.barPage = 0;
         this.pageSize = 20;
+        this.searchQuery = "";
+        this.selectedCategory = "all";
+        this.deficitViewMode = "top15"; // Default to Top 15 for clean presentation view
 
         // Chart instances
         this.doughnutChart = null;
@@ -176,6 +179,12 @@ class ChartsPageController {
         });
     }
 
+    setDeficitViewMode(mode) {
+        this.deficitViewMode = mode;
+        const items = this.db.getItems();
+        this.renderTopDeficitChart(items);
+    }
+
     renderTopDeficitChart(items) {
         const canvas = document.getElementById("chartTopDeficitBar");
         if (!canvas) return;
@@ -192,6 +201,26 @@ class ChartsPageController {
             })
             .filter(i => i.deficit > 0)
             .sort((a, b) => b.deficit - a.deficit);
+
+        // Update View Mode Buttons active highlights & counts
+        const btn15 = document.getElementById("btnDeficitTop15");
+        const btn30 = document.getElementById("btnDeficitTop30");
+        const btnAll = document.getElementById("btnDeficitAll");
+
+        if (btn15) btn15.style.borderColor = this.deficitViewMode === 'top15' ? 'var(--accent-primary)' : 'var(--border-color)';
+        if (btn30) btn30.style.borderColor = this.deficitViewMode === 'top30' ? 'var(--accent-primary)' : 'var(--border-color)';
+        if (btnAll) {
+            btnAll.style.borderColor = this.deficitViewMode === 'all' ? 'var(--accent-primary)' : 'var(--border-color)';
+            btnAll.textContent = `📜 ทุกรายการ (${deficitItems.length})`;
+        }
+
+        // Filter items based on selected view mode (Top 15 / Top 30 / All)
+        let displayItems = deficitItems;
+        if (this.deficitViewMode === 'top15') {
+            displayItems = deficitItems.slice(0, 15);
+        } else if (this.deficitViewMode === 'top30') {
+            displayItems = deficitItems.slice(0, 30);
+        }
 
         // Smart multi-line text wrapping with rank number prefix so EVERY name is crystal clear!
         const wrapTextWithRank = (name, index, maxLen = 26) => {
@@ -222,12 +251,12 @@ class ChartsPageController {
 
         // Dynamically adjust wrapper height based on multi-line text items so NO names overlap!
         if (canvas.parentElement) {
-            const dynamicHeight = Math.max(450, deficitItems.length * 56);
+            const dynamicHeight = Math.max(380, displayItems.length * 52);
             canvas.parentElement.style.height = `${dynamicHeight}px`;
         }
 
-        const labels = deficitItems.map((i, idx) => wrapTextWithRank(i.name, idx, 26));
-        const data = deficitItems.map(i => i.deficit);
+        const labels = displayItems.map((i, idx) => wrapTextWithRank(i.name, idx, 26));
+        const data = displayItems.map(i => i.deficit);
 
         const ctx = canvas.getContext("2d");
 
@@ -695,6 +724,76 @@ class ChartsPageController {
                 this.downloadChartAsImage(c.id, c.name);
             }, index * 350);
         });
+    }
+
+    downloadCombinedDashboardImage() {
+        const c1 = document.getElementById('chartStatusDoughnut');
+        const c2 = document.getElementById('chartLocationsBar');
+        const c3 = document.getElementById('chartMainBar');
+        const c4 = document.getElementById('chartTopDeficitBar');
+
+        if (!c1 || !c2 || !c3 || !c4) {
+            alert("⚠️ ไม่พบข้อมูลกราฟสำหรับสร้างรูปภาพสรุปรวม");
+            return;
+        }
+
+        const padding = 30;
+        const masterWidth = 1400;
+        const headerHeight = 120;
+        const row1Height = 420;
+        const row2Height = 450;
+        const row3Height = Math.max(480, c4.height || 600);
+        const masterHeight = headerHeight + row1Height + row2Height + row3Height + (padding * 5);
+
+        const masterCanvas = document.createElement("canvas");
+        masterCanvas.width = masterWidth;
+        masterCanvas.height = masterHeight;
+        const ctx = masterCanvas.getContext("2d");
+
+        // Fill background dark theme #0f172a
+        ctx.fillStyle = "#0f172a";
+        ctx.fillRect(0, 0, masterWidth, masterHeight);
+
+        // Header Title Banner
+        ctx.fillStyle = "#1e293b";
+        ctx.fillRect(padding, padding, masterWidth - (padding * 2), 90);
+        ctx.strokeStyle = "#334155";
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(padding, padding, masterWidth - (padding * 2), 90);
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 24px Sarabun, sans-serif";
+        ctx.fillText("📊 รายงานภาพรวมสรุปข้อมูลคลังและสต็อกพัสดุเรียลไทม์ (ผปบ.กฟส.ขก.2)", padding + 20, padding + 42);
+
+        const now = new Date();
+        const dateStr = now.toLocaleDateString("th-TH", { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        ctx.fillStyle = "#34d399";
+        ctx.font = "14px Sarabun, sans-serif";
+        ctx.fillText(`🕒 ข้อมูลอัปเดตเรียลไทม์เมื่อ: ${dateStr} น.`, padding + 20, padding + 70);
+
+        // Draw Row 1: Chart 1 & Chart 2 side-by-side
+        const halfWidth = (masterWidth - (padding * 3)) / 2;
+        let currentY = padding + headerHeight;
+
+        ctx.drawImage(c1, padding, currentY, halfWidth, row1Height - 20);
+        ctx.drawImage(c2, padding * 2 + halfWidth, currentY, halfWidth, row1Height - 20);
+
+        // Draw Row 2: Chart 3
+        currentY += row1Height;
+        ctx.drawImage(c3, padding, currentY, masterWidth - (padding * 2), row2Height - 20);
+
+        // Draw Row 3: Chart 4
+        currentY += row2Height;
+        ctx.drawImage(c4, padding, currentY, masterWidth - (padding * 2), row3Height - 20);
+
+        // Download Master Canvas PNG
+        const imageURI = masterCanvas.toDataURL("image/png");
+        const link = document.createElement("a");
+        link.href = imageURI;
+        link.download = `PEA_Warehouse_Full_Analytics_Dashboard_${new Date().toISOString().slice(0, 10)}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 }
 

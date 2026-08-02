@@ -65,15 +65,18 @@
                     </div>
                 </div>
             </div>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                <button class="btn btn-primary" style="padding: 10px 16px; font-weight: 700; background: linear-gradient(135deg, #3b82f6, #2563eb);" onclick="chartsPage.downloadAllChartsAsImages()" title="ดาวน์โหลดรูปภาพกราฟวิเคราะห์ทุกตัวเป็นไฟล์ PNG สำหรับนำเสนอในการประชุม">
-                    🖼️ เซฟรูปกราฟทั้งหมด (PNG)
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                <button class="btn btn-primary" style="padding: 10px 16px; font-weight: 700; background: linear-gradient(135deg, #3b82f6, #1d4ed8);" onclick="chartsPage.downloadCombinedDashboardImage()" title="รวมภาพกราฟและ KPI สรุปทั้งหมดเป็นรูปภาพแผ่นเดียวสำหรับเสนอผู้บริหาร">
+                    📸 เซฟภาพสรุปรวมทั้งหมด (Combined PNG)
+                </button>
+                <button class="btn btn-primary" style="padding: 10px 16px; font-weight: 700; background: linear-gradient(135deg, #8b5cf6, #6d28d9);" onclick="window.print()" title="พิมพ์หรือบันทึกรายงานสรุปกราฟทั้งหมดเป็นไฟล์ PDF">
+                    📄 พิมพ์ / บันทึก PDF
+                </button>
+                <button class="btn btn-outline" style="padding: 10px 16px; font-weight: 600;" onclick="chartsPage.downloadAllChartsAsImages()" title="ดาวน์โหลดรูปภาพกราฟทั้ง 4 ตัวแยกไฟล์ PNG">
+                    🖼️ เซฟรูปแยกกราฟ (PNG)
                 </button>
                 <button class="btn btn-warning" style="padding: 10px 16px; font-weight: 700; background: #f59e0b; color: #ffffff;" onclick="chartsPage.exportExcelReport()" title="ดาวน์โหลดตารางข้อมูลและรายงานสต็อกทั้งหมดเป็นไฟล์ Excel">
                     📊 โหลดรายงาน Excel (.xls)
-                </button>
-                <button class="btn btn-outline" style="padding: 10px 16px; font-weight: 600;" onclick="chartsPage.exportJsonBackup()" title="ส่งออกไฟล์สำรองข้อมูล JSON">
-                    💾 สำรองข้อมูล (JSON)
                 </button>
                 <button class="btn btn-outline" style="padding: 10px 16px; font-weight: 600;" onclick="window.location.href='index.html'">
                     🏠 กลับสู่ระบบหลัก
@@ -179,12 +182,23 @@
             <div class="chart-card">
                 <div class="chart-header" style="flex-wrap: wrap; gap: 8px;">
                     <div>
-                        <h3 style="font-size: 16px; font-weight: 700;">🚨 ลำดับรายการพัสดุที่ขาดสต็อกและต้องจัดหาด่วนที่สุด (ทุกรายการเรียงตามส่วนต่างขาด)</h3>
-                        <p style="font-size: 12px; color: var(--text-secondary);">แสดงรายการพัสดุทั้งหมดที่มีจำนวนคงเหลือต่ำกว่าเกณฑ์มาตรฐาน เรียงลำดับจากส่วนต่างที่ขาดมากที่สุด (เห็นชื่อเต็มทุกตัว)</p>
+                        <h3 style="font-size: 16px; font-weight: 700;">🚨 ลำดับรายการพัสดุที่ขาดสต็อกและต้องจัดหาด่วนที่สุด</h3>
+                        <p style="font-size: 12px; color: var(--text-secondary);">แสดงรายการพัสดุที่มีจำนวนคงเหลือต่ำกว่าเกณฑ์มาตรฐาน เรียงลำดับจากส่วนต่างที่ขาดมากที่สุด</p>
                     </div>
-                    <button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; font-weight: 600;" onclick="chartsPage.downloadChartAsImage('chartTopDeficitBar', 'กราฟลำดับพัสดุที่ขาดสต็อกด่วนที่สุด.png')" title="เซฟเป็นไฟล์รูปภาพ PNG สำหรับนำเสนอในการประชุม">
-                        🖼️ เซฟรูปภาพ (PNG)
-                    </button>
+                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                        <button class="btn btn-outline" id="btnDeficitTop15" style="padding: 4px 10px; font-size: 12px; font-weight: 600;" onclick="chartsPage.setDeficitViewMode('top15')">
+                            🏆 Top 15 ด่วนสุด
+                        </button>
+                        <button class="btn btn-outline" id="btnDeficitTop30" style="padding: 4px 10px; font-size: 12px; font-weight: 600;" onclick="chartsPage.setDeficitViewMode('top30')">
+                            📋 Top 30
+                        </button>
+                        <button class="btn btn-outline" id="btnDeficitAll" style="padding: 4px 10px; font-size: 12px; font-weight: 600;" onclick="chartsPage.setDeficitViewMode('all')">
+                            📜 ทุกรายการ
+                        </button>
+                        <button class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; font-weight: 600;" onclick="chartsPage.downloadChartAsImage('chartTopDeficitBar', 'กราฟลำดับพัสดุที่ขาดสต็อกด่วนที่สุด.png')" title="เซฟเป็นไฟล์รูปภาพ PNG สำหรับนำเสนอในการประชุม">
+                            🖼️ เซฟรูปภาพ (PNG)
+                        </button>
+                    </div>
                 </div>
                 <div class="chart-wrapper" style="height: 380px;">
                     <canvas id="chartTopDeficitBar"></canvas>
