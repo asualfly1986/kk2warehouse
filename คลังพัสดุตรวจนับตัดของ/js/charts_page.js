@@ -535,7 +535,7 @@ class ChartsPageController {
         if (subtitleEl) {
             const granText = this.trendGranularity === 'weekly' ? 'รายสัปดาห์' : 'รายเดือน';
             const itemText = selectedItem ? `พัสดุเฉพาะรายการ: [${selectedItem.code}] ${selectedItem.name}` : 'พัสดุรวมทุกรายการ';
-            subtitleEl.textContent = `เปรียบเทียบเบิกออก (🔴 สีแดง) เทียบกับเติมเข้า (🟢 สีเขียว) แบบ${granText} | ${itemText}`;
+            subtitleEl.textContent = `เปรียบเทียบเบิกออก (🔴 สีแดง) | เติมเข้า (🟢 สีเขียว) | ตรวจนับ (🔵 สีฟ้า) แบบ${granText} | ${itemText}`;
         }
 
         // Filter logs by selected item code
@@ -555,7 +555,7 @@ class ChartsPageController {
                 const endD = new Date(now.getTime() - (i * 7 * 24 * 60 * 60 * 1000));
                 const startD = new Date(endD.getTime() - (6 * 24 * 60 * 60 * 1000));
                 const label = `${startD.getDate()} ${thaiMonthNames[startD.getMonth()]} - ${endD.getDate()} ${thaiMonthNames[endD.getMonth()]}`;
-                buckets.push({ startTime: startD.getTime(), endTime: endD.getTime() + 86400000, label, outbound: 0, inbound: 0 });
+                buckets.push({ startTime: startD.getTime(), endTime: endD.getTime() + 86400000, label, outbound: 0, inbound: 0, audit: 0 });
             }
 
             logs.forEach(l => {
@@ -564,22 +564,26 @@ class ChartsPageController {
                 const bucket = buckets.find(b => logTime >= b.startTime && logTime < b.endTime);
                 if (bucket) {
                     const qty = Math.abs(Number(l.qty || l.change || 0));
-                    if (l.type === 'out' || l.type === 'withdraw') bucket.outbound += qty;
+                    if (l.type === 'out' || l.type === 'withdraw' || l.type === 'dispense') bucket.outbound += qty;
                     else if (l.type === 'in' || l.type === 'receive' || l.type === 'set') bucket.inbound += qty;
+                    else if (l.type === 'audit' || l.type === 'count') bucket.audit += qty;
                 }
             });
 
             // Demo baseline pattern for weekly curves if no logs exist yet
             let totalOut = buckets.reduce((acc, b) => acc + b.outbound, 0);
             let totalIn = buckets.reduce((acc, b) => acc + b.inbound, 0);
-            if (totalOut === 0 && totalIn === 0) {
+            let totalAudit = buckets.reduce((acc, b) => acc + b.audit, 0);
+            if (totalOut === 0 && totalIn === 0 && totalAudit === 0) {
                 const baseMultiplier = selectedItem ? Math.max(2, Math.floor(Number(selectedItem.standard) / 4)) : 35;
-                const weeklyPatternOut = [3, 5, 8, 4, 10, 6, 12, 9, 7, 14, 11, 15];
-                const weeklyPatternIn  = [5, 6, 10, 5, 12, 8, 15, 10, 9, 18, 13, 20];
+                const weeklyPatternOut   = [3, 5, 8, 4, 10, 6, 12, 9, 7, 14, 11, 15];
+                const weeklyPatternIn    = [5, 6, 10, 5, 12, 8, 15, 10, 9, 18, 13, 20];
+                const weeklyPatternAudit = [2, 4, 3, 5, 4, 7, 5, 6, 8, 6, 9, 10];
                 buckets.forEach((b, idx) => {
                     const pIdx = idx % 12;
                     b.outbound = weeklyPatternOut[pIdx] * baseMultiplier;
                     b.inbound = weeklyPatternIn[pIdx] * baseMultiplier;
+                    b.audit = weeklyPatternAudit[pIdx] * baseMultiplier;
                 });
             }
         } else {
@@ -589,7 +593,7 @@ class ChartsPageController {
                 const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
                 const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
                 const label = `${thaiMonthNames[d.getMonth()]} ${d.getFullYear() + 543}`;
-                buckets.push({ key, label, outbound: 0, inbound: 0 });
+                buckets.push({ key, label, outbound: 0, inbound: 0, audit: 0 });
             }
 
             logs.forEach(l => {
@@ -599,21 +603,25 @@ class ChartsPageController {
                 const bucket = buckets.find(b => b.key === logKey);
                 if (bucket) {
                     const qty = Math.abs(Number(l.qty || l.change || 0));
-                    if (l.type === 'out' || l.type === 'withdraw') bucket.outbound += qty;
+                    if (l.type === 'out' || l.type === 'withdraw' || l.type === 'dispense') bucket.outbound += qty;
                     else if (l.type === 'in' || l.type === 'receive' || l.type === 'set') bucket.inbound += qty;
+                    else if (l.type === 'audit' || l.type === 'count') bucket.audit += qty;
                 }
             });
 
             let totalOut = buckets.reduce((acc, b) => acc + b.outbound, 0);
             let totalIn = buckets.reduce((acc, b) => acc + b.inbound, 0);
-            if (totalOut === 0 && totalIn === 0) {
+            let totalAudit = buckets.reduce((acc, b) => acc + b.audit, 0);
+            if (totalOut === 0 && totalIn === 0 && totalAudit === 0) {
                 const baseMultiplier = selectedItem ? Math.max(3, Math.floor(Number(selectedItem.standard) / 3)) : 45;
-                const monthlyPatternOut = [4, 6, 9, 5, 11, 7, 13, 10, 8, 15, 12, 16];
-                const monthlyPatternIn  = [6, 8, 12, 6, 14, 9, 16, 12, 10, 18, 15, 22];
+                const monthlyPatternOut   = [4, 6, 9, 5, 11, 7, 13, 10, 8, 15, 12, 16];
+                const monthlyPatternIn    = [6, 8, 12, 6, 14, 9, 16, 12, 10, 18, 15, 22];
+                const monthlyPatternAudit = [3, 5, 4, 6, 5, 8, 6, 7, 9, 8, 10, 12];
                 buckets.forEach((b, idx) => {
                     const pIdx = idx % 12;
                     b.outbound = monthlyPatternOut[pIdx] * baseMultiplier;
                     b.inbound = monthlyPatternIn[pIdx] * baseMultiplier;
+                    b.audit = monthlyPatternAudit[pIdx] * baseMultiplier;
                 });
             }
         }
@@ -621,6 +629,7 @@ class ChartsPageController {
         const labels = buckets.map(b => b.label);
         const outboundData = buckets.map(b => b.outbound);
         const inboundData = buckets.map(b => b.inbound);
+        const auditData = buckets.map(b => b.audit);
 
         const ctx = canvas.getContext("2d");
 
@@ -631,6 +640,10 @@ class ChartsPageController {
         const gradIn = ctx.createLinearGradient(0, 0, 0, 300);
         gradIn.addColorStop(0, "rgba(16, 185, 129, 0.35)");
         gradIn.addColorStop(1, "rgba(16, 185, 129, 0.0)");
+
+        const gradAudit = ctx.createLinearGradient(0, 0, 0, 300);
+        gradAudit.addColorStop(0, "rgba(6, 182, 212, 0.35)");
+        gradAudit.addColorStop(1, "rgba(6, 182, 212, 0.0)");
 
         this.monthlyTrendChart = new Chart(ctx, {
             type: "line",
@@ -664,6 +677,20 @@ class ChartsPageController {
                         pointBorderWidth: 2,
                         pointRadius: 5,
                         pointHoverRadius: 8
+                    },
+                    {
+                        label: "🔵 ยอดการตรวจนับพัสดุ (Stock Audit / Count)",
+                        data: auditData,
+                        borderColor: "#06b6d4",
+                        backgroundColor: gradAudit,
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.35,
+                        pointBackgroundColor: "#06b6d4",
+                        pointBorderColor: "#ffffff",
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 8
                     }
                 ]
             },
@@ -693,12 +720,13 @@ class ChartsPageController {
                         callbacks: {
                             afterBody: (tooltipItems) => {
                                 if (tooltipItems.length >= 2) {
-                                    const outVal = tooltipItems[0].raw || 0;
-                                    const inVal = tooltipItems[1].raw || 0;
+                                    const outVal = tooltipItems[0] ? tooltipItems[0].raw || 0 : 0;
+                                    const inVal = tooltipItems[1] ? tooltipItems[1].raw || 0 : 0;
+                                    const auditVal = tooltipItems[2] ? tooltipItems[2].raw || 0 : 0;
                                     const net = inVal - outVal;
                                     const netSign = net >= 0 ? `+${net}` : `${net}`;
                                     const unitStr = selectedItem ? selectedItem.unit : 'ชิ้น';
-                                    return `-------------------\n📊 สุทธิรับเข้าเทียบเบิกออก: ${netSign} ${unitStr}`;
+                                    return `-------------------\n📊 สุทธิรับเข้าเทียบเบิกออก: ${netSign} ${unitStr}\n📋 ยอดตรวจนับสะสม: ${auditVal} ${unitStr}`;
                                 }
                                 return "";
                             }
