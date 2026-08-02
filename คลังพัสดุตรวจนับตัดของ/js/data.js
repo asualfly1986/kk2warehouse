@@ -435,10 +435,11 @@ class StockDatabase {
         try {
             const baseUrl = this.getApiBaseUrl();
             const items = this.getItems();
+            const logs = this.getLogs();
             await fetch(`${baseUrl}/api/sync`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(items)
+                body: JSON.stringify({ items, logs })
             });
         } catch (e) { console.warn("Cloudflare push notice:", e.message); }
     }
@@ -464,12 +465,14 @@ class StockDatabase {
         let changeToSend = 0; 
 
         if (type === "dispense") {
-            if (oldQty < changeQty) throw new Error(`จำนวนคงเหลือไม่พอสำหรับการเบิก!`);
-            newQty = oldQty - changeQty; changeToSend = -changeQty; 
+            newQty = oldQty - changeQty; 
+            changeToSend = -changeQty; 
         } else if (type === "receive") {
-            newQty = oldQty + changeQty; changeToSend = changeQty;  
+            newQty = oldQty + changeQty; 
+            changeToSend = changeQty;  
         } else if (type === "audit") {
-            newQty = changeQty; changeToSend = newQty - oldQty; 
+            newQty = changeQty; 
+            changeToSend = newQty - oldQty; 
         }
 
         items[itemIndex].currentQty = newQty;
