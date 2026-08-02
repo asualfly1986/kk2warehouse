@@ -519,7 +519,20 @@ class StockDatabase {
             }).catch(e => console.error("D1 Update Error:", e));
         }
 
-        return items[itemIndex];
+        const updatedItem = items[itemIndex];
+        return {
+            item: updatedItem,
+            log: logObj,
+            code: updatedItem.code,
+            name: updatedItem.name,
+            currentQty: updatedItem.currentQty,
+            unit: updatedItem.unit || "ชิ้น",
+            standard: updatedItem.standard,
+            category: updatedItem.category,
+            mb52Qty: updatedItem.mb52Qty,
+            wmsQty: updatedItem.wmsQty,
+            kk23Qty: updatedItem.kk23Qty
+        };
     }
 
     updateItemImage(code, imageUrl) {

@@ -841,12 +841,18 @@ class WarehouseApp {
             this.closeModals();
 
             const actionText = type === "dispense" ? "เบิกจ่าย" : (type === "receive" ? "รับเข้า" : "ปรับยอดตรวจนับ");
-            alert(`✅ ทำรายการ [${actionText}] สำเร็จ!\nพัสดุ: ${result.item.name}\nคงเหลือจริง(storage location 2601): ${result.item.currentQty} ${result.item.unit}`);
+            const itemObj = (result && result.item) ? result.item : result;
+            alert(`✅ ทำรายการ [${actionText}] สำเร็จ!\nพัสดุ: ${itemObj.name}\nคงเหลือจริง(storage location 2601): ${itemObj.currentQty} ${itemObj.unit}`);
 
             if (this.activeTab === "dashboard") this.renderDashboard();
             if (this.activeTab === "stock") this.renderStockTable();
             if (this.activeTab === "alerts") this.renderAlertsPage();
             if (this.activeTab === "history") this.renderHistoryTable();
+
+            // Trigger immediate Cloudflare D1 push & cross-tab sync
+            if (typeof this.db.pushToCloudflare === "function") {
+                this.db.pushToCloudflare();
+            }
 
         } catch (err) {
             this.audio.playError();
